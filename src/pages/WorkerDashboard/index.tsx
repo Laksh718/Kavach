@@ -19,7 +19,10 @@ const mobileNavItems = [
 
 export default function WorkerDashboard() {
   return (
-    <div className="min-h-screen p-2 md:p-4" style={{ background: "var(--bg-app)" }}>
+    <div
+      className="min-h-screen p-2 md:p-4"
+      style={{ background: "var(--bg-app)" }}
+    >
       <div className="h-[calc(100vh-16px)] md:h-[calc(100vh-32px)] rounded-[28px] border border-[#111827] bg-[#ECECEC] overflow-hidden">
         <div className="flex h-full">
           <Sidebar />
@@ -32,7 +35,9 @@ export default function WorkerDashboard() {
                   <h1 className="font-syne font-bold text-4xl md:text-5xl text-[#111827] leading-none">
                     Hello, Rajan!
                   </h1>
-                  <p className="text-sm text-[#6B7280] mt-1">All your policy and payout updates in one place.</p>
+                  <p className="text-sm text-[#6B7280] mt-1">
+                    All your policy and payout updates in one place.
+                  </p>
                 </div>
                 <div className="ml-auto hidden md:flex items-center gap-3">
                   <div className="flex items-center bg-[#E4E4E7] rounded-full px-4 py-2 min-w-[280px]">
@@ -68,9 +73,12 @@ export default function WorkerDashboard() {
                   path="settings"
                   element={
                     <div className="p-6">
-                      <h2 className="font-syne font-bold text-2xl text-[#111827] mb-4">Settings</h2>
+                      <h2 className="font-syne font-bold text-2xl text-[#111827] mb-4">
+                        Settings
+                      </h2>
                       <div className="k-card p-5 text-[#64748B]">
-                        Language, notifications and account settings coming soon.
+                        Language, notifications and account settings coming
+                        soon.
                       </div>
                     </div>
                   }
@@ -96,7 +104,10 @@ export default function WorkerDashboard() {
                 >
                   {({ isActive }) => (
                     <>
-                      <Icon size={20} className={isActive ? "text-[#111827]" : ""} />
+                      <Icon
+                        size={20}
+                        className={isActive ? "text-[#111827]" : ""}
+                      />
                       <span className="text-[10px]">{label}</span>
                     </>
                   )}
