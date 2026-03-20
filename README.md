@@ -1,7 +1,13 @@
-# KAVACH Mobile App (React Native)
+# KAVACH Platform (Mobile + User Website + Admin Portal)
 
-KAVACH (*कवच*, Sanskrit for armor) is an AI-powered parametric income protection platform for India’s delivery gig workers. This repository branch contains the **mobile app** implementation built with React Native + TypeScript + Expo.
+KAVACH (*कवच*, Sanskrit for armor) is an AI-powered parametric income protection platform for India’s delivery gig workers. This documentation now covers the full product surfaces:
 
+- Worker Mobile App (React Native)
+- User Website (React)
+- Admin + Insurer Portal (React)
+- ML + data pipeline architecture
+
+This branch contributes the mobile application implementation, while the repository’s existing web surfaces provide the user website and admin operations portal in React.
 ---
 
 ## Inspiration
@@ -26,12 +32,18 @@ KAVACH is an **AI-powered parametric income protection platform** for India’s 
 
 ### Product Stack
 
-- **Worker Mobile App (this branch):**
+- **Worker Mobile App (React Native, Android-first):**
   - OTP onboarding, eKYC flow scaffolding, platform selection, earnings upload flow, AA consent flow, plan selection, UPI setup, dashboard/tabs, disruption and payout journey.
   - Designed for fast daily engagement (zone safety, earnings vs baseline, forecast, TrustKarma).
 
-- **Admin + Insurer Web Dashboard (existing branch in main repo):**
-  - Real-time operations, disruption management, fraud review queue, actuarial views, IRDAI-aligned audit trail.
+- **User Website (React):**
+  - Public-facing product experience for workers and partners.
+  - Product communication, onboarding entry points, plan communication, trust/transparency messaging.
+  - Foundation for multilingual UX and lightweight acquisition funnel.
+
+- **Admin + Insurer Portal (React):**
+  - Real-time operations, disruption management, fraud review queue, actuarial views, payout monitoring, and IRDAI-aligned audit trail.
+  - Operational controls for trigger events and payout lifecycle visibility.
 
 - **AI/ML engine (integrated architecture):**
   - Disruption Model (RandomForestClassifier)
@@ -40,15 +52,16 @@ KAVACH is an **AI-powered parametric income protection platform** for India’s 
 
 - **Business model:**
   - B2B2C MGA under IRDAI sandbox pathway
-  - Weekly pricing ₹350–₹700 via UPI AutoPay
+  - Weekly pricing ₹35–₹99 via UPI AutoPay
   - Portable protection across multiple platforms
 
 - **Data innovation:**
   - RBI Account Aggregator framework used to reconstruct earnings from consented bank transaction entries without requiring gig-platform earnings APIs.
-
 ---
 
-## Mobile Tech Stack (Implemented)
+## Technology Stack (By Surface)
+
+### Mobile App
 
 - React Native (Expo, TypeScript)
 - React Navigation (Native Stack + Bottom Tabs)
@@ -62,6 +75,25 @@ KAVACH is an **AI-powered parametric income protection platform** for India’s 
   - rounded/pill components
   - flat card system
 
+### User Website (React)
+
+- React + TypeScript
+- Route-based public pages for awareness, trust messaging, and conversion funnel
+- Shared visual language with mobile for brand continuity
+
+### Admin + Insurer Portal (React)
+
+- React + TypeScript dashboards
+- Operational modules for disruption monitoring, payout controls, fraud review, and analytics
+- Extensible data views for actuarial and compliance workflows
+
+### Platform & Services
+
+- Node.js/TypeScript service layer (event-driven design)
+- Python ML services for scoring and trigger intelligence
+- Data stack direction: PostgreSQL + MongoDB + Redis + streaming layer
+- India data residency alignment (ap-south-1 orientation)
+
 ---
 
 ## How We Built It
@@ -72,7 +104,17 @@ We treated this as a production-intent product, not a visual-only demo.
 - Weather + risk data strategy centered on WeatherUnion + IMD + CPCB + alerts
 - ML architecture designed for sparse worker data reality (population model + personal deviation approach)
 - Mobile-first UX language tuned for worker trust and low-friction comprehension
+- Web + admin experiences in React to ensure operational transparency and scale-ready workflows
 - Infrastructure direction for India data residency and event-driven operations
+
+### End-to-End Product Flow
+
+1. Worker onboarding (mobile)
+2. Identity + baseline setup (mobile + OCR + AA consent)
+3. Risk monitoring + disruption scoring (ML services)
+4. Shortfall detection + payout decisioning (rules + model outputs)
+5. Instant payout experience + transparency screens (mobile)
+6. Operational supervision, overrides, and analytics (admin portal)
 
 ---
 
@@ -122,42 +164,147 @@ We treated this as a production-intent product, not a visual-only demo.
 
 ---
 
-## Local Development (Mobile)
+## Local Development (Mobile + Website + Admin)
 
 ### Prerequisites
 
 - Node.js 18+
 - npm 9+
+- Git
 
-### Install
+### 1) Mobile App (this folder)
+
+Path: `mobile-app/`
 
 ```bash
 npm install
-```
-
-### Run on laptop (web demo)
-
-```bash
 npm run web
 ```
 
-If port 8081 is occupied, Expo auto-switches to another port (commonly 8082).
+If port 8081 is occupied, Expo auto-switches (commonly 8082).
 
-### Run on Android/iOS
+Android/iOS:
 
 ```bash
 npm run android
 npm run ios
 ```
 
+### 2) User Website (React)
+
+Path: repository root web app (React workspace in main branch structure)
+
+```bash
+npm install
+npm run dev
+```
+
+Build:
+
+```bash
+npm run build
+npm run preview
+```
+
+### 3) Admin Portal (React)
+
+Path: same React workspace/pages module in repository main structure.
+
+Typical run command:
+
+```bash
+npm run dev
+```
+
+### Environment Setup (Suggested)
+
+- `VITE_API_BASE_URL` for web/admin API client
+- `EXPO_PUBLIC_API_BASE_URL` for mobile runtime config
+- `WEATHERUNION_API_KEY`, `AA_PROVIDER_KEY`, `RAZORPAY_KEY` for backend integrations
+
+### Validation
+
+- Type check (mobile):
+
+```bash
+npx tsc --noEmit
+```
+
+- Lint/test commands can be run per surface as configured in each workspace/package.
+
 ---
 
-## Current Branch Purpose
-
-This branch is dedicated to the **mobile app implementation** so it can be merged alongside existing website/admin portal work in the main GitHub repository:
+## Repository Scope & Surfaces
 
 - Repo: https://github.com/Laksh718/Kavach.git
-- Scope of this branch: React Native mobile app, flows, and mobile design system
+- User Website: React-based product surface for worker/partner communication
+- Admin + Insurer Portal: React-based operations and governance interface
+- Mobile App: React Native worker app with onboarding, risk, payout, and TrustKarma journeys
+
+### Branch Notes
+
+- `mobile-app-rn` / `mobile-app-rn-fix`: mobile app contribution branches
+- `mobile-app-rn-fix` is the clean compare branch created from `origin/main`
+
+### PR (Mobile Integration)
+
+- https://github.com/Laksh718/Kavach/pull/new/mobile-app-rn-fix
+
+---
+
+## Detailed Feature Coverage
+
+### Worker Mobile Journeys
+
+- Splash, language selection, value proposition onboarding
+- Mobile OTP, eKYC scaffold, PAN step
+- Platform selection, earnings upload, AA consent flow
+- Plan selection, UPI AutoPay setup, welcome activation
+- Home (normal/disruption), live disruption, payout processing/received
+- Protect, Earnings, Zones, Profile, TrustKarma, Claims, Notifications
+
+### User Website Journeys (React)
+
+- Product overview and trust messaging
+- Worker-focused value communication and onboarding entry
+- Plan-level understanding and disruption protection explanation
+- Public information architecture aligned with low-trust insurance audiences
+
+### Admin & Insurer Journeys (React)
+
+- Real-time disruption event visibility
+- Trigger score monitoring and payout queue observability
+- Fraud review path with explainability support
+- Operations and audit surfaces for governance/compliance
+
+### Data & Intelligence
+
+- Trigger intelligence via environmental and platform-side signals
+- Baseline earnings estimation for fair shortfall computation
+- Fraud/anomaly layers for ring detection and abuse mitigation
+- Transparent payout math communication to workers
+
+---
+
+## Deployment & Scaling Notes
+
+### Deployment Direction
+
+- Mobile: Expo-managed build flow (web preview + device targets)
+- Web/Admin: React build pipelines, CI/CD to managed hosting
+- Backend + ML: service split for inference and orchestration
+
+### Compliance Orientation
+
+- IRDAI sandbox pathway alignment
+- RBI AA framework-aligned data consent model
+- DPDP-aware India data residency direction
+
+### Scale Goals
+
+- City-level rollout with zone calibration
+- Seasonal trigger adaptation (rain/AQI/heat)
+- Higher automation with reviewer-in-the-loop safeguards
 
 ---
 
