@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, createRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -193,8 +193,8 @@ function Step3({ onNext }: { onNext: () => void }) {
   const [phone, setPhone] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState(["", "", "", ""]);
-  const [shakeRefs] = useState(() =>
-    Array.from({ length: 4 }, () => useRef<HTMLInputElement>(null)),
+  const shakeRefs = useRef(
+    Array.from({ length: 4 }, () => createRef<HTMLInputElement>()),
   );
   const [shake, setShake] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -212,7 +212,7 @@ function Step3({ onNext }: { onNext: () => void }) {
     const next = [...otp];
     next[idx] = digit;
     setOtp(next);
-    if (digit && idx < 3) shakeRefs[idx + 1]?.current?.focus();
+    if (digit && idx < 3) shakeRefs.current[idx + 1]?.current?.focus();
 
     const full = next.join("");
     if (full.length === 4) {
@@ -228,7 +228,7 @@ function Step3({ onNext }: { onNext: () => void }) {
 
   const handleOtpKeyDown = (idx: number, e: React.KeyboardEvent) => {
     if (e.key === "Backspace" && !otp[idx] && idx > 0)
-      shakeRefs[idx - 1]?.current?.focus();
+      shakeRefs.current[idx - 1]?.current?.focus();
   };
 
   return (
@@ -283,14 +283,14 @@ function Step3({ onNext }: { onNext: () => void }) {
             {otp.map((d, i) => (
               <input
                 key={i}
-                ref={shakeRefs[i]}
+                ref={shakeRefs.current[i]}
                 type="number"
                 value={d}
                 onChange={(e) => handleOtpChange(i, e.target.value)}
                 onKeyDown={(e) => handleOtpKeyDown(i, e)}
                 className="w-14 h-14 text-center text-2xl font-mono font-bold border-2 rounded-2xl outline-none focus:border-[#6366F1] bg-[#F1F5F9] text-[#0F172A] transition-colors"
                 style={{ borderColor: d ? "#6366F1" : "#E2E8F0" }}
-                onClick={() => shakeRefs[i]?.current?.select()}
+                onClick={() => shakeRefs.current[i]?.current?.select()}
               />
             ))}
           </div>
