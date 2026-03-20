@@ -6,7 +6,7 @@ const enCommon = {
   brand: 'KAVACH',
   tagline: 'Income Protection for Gig Workers',
   buttons: {
-    startProtection: 'Start Protection — ₹65/week',
+    startProtection: 'Start Protection — ₹350/week',
     seeHowItWorks: 'See how it works ↓',
     openDashboard: 'Open My Dashboard →',
     protectIncome: 'Protect My Income →',
@@ -59,7 +59,7 @@ const hiCommon = {
   brand: 'कवच',
   tagline: 'गिग वर्कर्स के लिए आय सुरक्षा',
   buttons: {
-    startProtection: 'सुरक्षा शुरू करें — ₹65/सप्ताह',
+    startProtection: 'सुरक्षा शुरू करें — ₹350/सप्ताह',
     seeHowItWorks: 'देखें यह कैसे काम करता है ↓',
     openDashboard: 'डैशबोर्ड खोलें →',
     protectIncome: 'मेरी आय सुरक्षित करें →',

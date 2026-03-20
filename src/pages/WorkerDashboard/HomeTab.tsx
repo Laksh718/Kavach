@@ -512,7 +512,7 @@ export function HomeTab() {
                   🛡️ Premium
                 </div>
                 <div className="font-mono font-bold text-[#0F172A] text-sm">
-                  ₹65 ↓
+                  ₹500 ↓
                 </div>
               </div>
             </div>
