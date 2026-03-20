@@ -37,12 +37,24 @@ export const router = createBrowserRouter([
     element: withSuspense(Onboarding),
   },
   {
+    path: '/onboarding',
+    element: <Navigate to="/onboard" replace />,
+  },
+  {
     path: '/dashboard/*',
     element: withSuspense(WorkerDashboard),
   },
   {
+    path: '/worker/*',
+    element: <Navigate to="/dashboard" replace />,
+  },
+  {
     path: '/admin/*',
     element: withSuspense(AdminDashboard),
+  },
+  {
+    path: '/admin-dashboard/*',
+    element: <Navigate to="/admin" replace />,
   },
   {
     path: '/insurer/*',
