@@ -1,0 +1,590 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ──────────────────────────────────────────────
+   KAVACH v2 — Light Periwinkle Theme
+   ────────────────────────────────────────────── */
+:root {
+  /* Backgrounds */
+  --bg-app: #eef2ff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8faff;
+  --bg-sidebar: #c7d2fe;
+  --bg-hero-card: #a5b4fc;
+  --bg-input: #f1f5f9;
+
+  /* Text */
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --text-on-sidebar: #1e1b4b;
+
+  /* Accents */
+  --accent-black: #0f172a;
+  --accent-blue: #6366f1;
+  --accent-amber: #f59e0b;
+  --accent-success: #10b981;
+  --accent-danger: #ef4444;
+  --accent-warning: #f59e0b;
+
+  /* Charts */
+  --chart-primary: #1e1b4b;
+  --chart-secondary: #a5b4fc;
+
+  /* Borders */
+  --border: #e2e8f0;
+  --border-card: #ede9fe;
+
+  /* Shadows */
+  --shadow-card:
+    0 1px 3px rgba(99, 102, 241, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-card-lg: 0 4px 16px rgba(99, 102, 241, 0.12);
+
+  /* shadcn/ui vars */
+  --background: 238 100% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --primary: 239 84% 67%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+  --accent: 239 84% 67%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 239 84% 67%;
+  --radius: 0.75rem;
+}
+
+/* ──────────────────────────────────────────────
+   Base
+   ────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: "DM Sans", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ──────────────────────────────────────────────
+   Scrollbar
+   ────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #c7d2fe;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #818cf8;
+}
+
+/* ──────────────────────────────────────────────
+   Typography utilities
+   ────────────────────────────────────────────── */
+.font-display {
+  font-family: "Syne", sans-serif;
+}
+.font-body {
+  font-family: "DM Sans", sans-serif;
+}
+.font-rupee {
+  font-family: "JetBrains Mono", monospace;
+  font-feature-settings: "tnum";
+}
+.font-hindi {
+  font-family: "Noto Sans Devanagari", sans-serif;
+}
+
+/* ──────────────────────────────────────────────
+   Card System
+   ────────────────────────────────────────────── */
+.k-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 20px;
+  padding: 20px 24px;
+  box-shadow: var(--shadow-card);
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
+}
+.k-card:hover {
+  box-shadow: var(--shadow-card-lg);
+}
+.k-card-hero {
+  background: var(--bg-hero-card);
+  border-radius: 24px;
+  padding: 28px;
+  box-shadow: 0 4px 24px rgba(99, 102, 241, 0.2);
+}
+.k-card-sm {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--shadow-card);
+}
+
+/* ──────────────────────────────────────────────
+   Sidebar
+   ────────────────────────────────────────────── */
+.k-sidebar {
+  background: var(--bg-sidebar);
+  width: 200px;
+  min-height: 100vh;
+  flex-shrink: 0;
+}
+.k-nav-pill {
+  background: var(--accent-black);
+  color: #fff;
+  border-radius: 9999px;
+  padding: 10px 16px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.k-nav-item {
+  color: var(--text-on-sidebar);
+  border-radius: 9999px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  transition:
+    background 0.15s,
+    color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.k-nav-item:hover {
+  background: rgba(99, 102, 241, 0.12);
+}
+
+/* ──────────────────────────────────────────────
+   Quick action buttons (black circles)
+   ────────────────────────────────────────────── */
+.k-action-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 9999px;
+  background: var(--accent-black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+.k-action-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+}
+.k-action-btn:active {
+  transform: scale(0.97);
+}
+
+/* ──────────────────────────────────────────────
+   Toggle pill group (Weekly / Monthly)
+   ────────────────────────────────────────────── */
+.k-toggle-group {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: 9999px;
+  padding: 3px;
+  gap: 2px;
+}
+.k-toggle-btn {
+  border-radius: 9999px;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+  color: var(--text-secondary);
+  background: transparent;
+}
+.k-toggle-btn.active {
+  background: var(--accent-black);
+  color: white;
+}
+
+/* ──────────────────────────────────────────────
+   Input
+   ────────────────────────────────────────────── */
+.k-input {
+  background: var(--bg-input);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 15px;
+  color: var(--text-primary);
+  width: 100%;
+  outline: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.k-input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* ──────────────────────────────────────────────
+   Primary button
+   ────────────────────────────────────────────── */
+.btn-primary {
+  background: var(--accent-black);
+  color: white;
+  border-radius: 12px;
+  padding: 14px 24px;
+  font-weight: 600;
+  font-size: 15px;
+  border: none;
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+  font-family: "DM Sans", sans-serif;
+}
+.btn-primary:hover {
+  transform: scale(1.01);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+}
+.btn-primary:active {
+  transform: scale(0.99);
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background: #f1f5f9;
+  color: var(--text-primary);
+  border-radius: 12px;
+  padding: 14px 24px;
+  font-weight: 600;
+  font-size: 15px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: "DM Sans", sans-serif;
+}
+.btn-secondary:hover {
+  background: #e2e8f0;
+}
+
+/* ──────────────────────────────────────────────
+   Disruption Alert (light mode)
+   ────────────────────────────────────────────── */
+.disruption-alert {
+  background: #fff1f2;
+  border: 1.5px solid #fecdd3;
+  border-left: 4px solid var(--accent-danger);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+/* ──────────────────────────────────────────────
+   Shield / Logo animations
+   ────────────────────────────────────────────── */
+@keyframes shield-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.4));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.7));
+    transform: scale(1.03);
+  }
+}
+.shield-glow-anim {
+  animation: shield-glow 3s ease-in-out infinite;
+}
+
+/* ──────────────────────────────────────────────
+   Confetti particles
+   ────────────────────────────────────────────── */
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-20px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+.confetti-particle {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  animation: confetti-fall 2.5s ease-in forwards;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ──────────────────────────────────────────────
+   Rain animation (landing page)
+   ────────────────────────────────────────────── */
+.rain-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.rain-drop {
+  position: absolute;
+  width: 1.5px;
+  border-radius: 9999px;
+  background: linear-gradient(to bottom, transparent, rgba(147, 197, 253, 0.6));
+  animation: rain linear infinite;
+}
+@keyframes rain {
+  0% {
+    transform: translateY(-100vh);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0.2;
+  }
+}
+
+/* ──────────────────────────────────────────────
+   Leaflet overrides
+   ────────────────────────────────────────────── */
+.leaflet-container {
+  border-radius: 16px !important;
+  z-index: 0;
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  box-shadow: var(--shadow-card-lg) !important;
+}
+
+/* ──────────────────────────────────────────────
+   Skeleton loading
+   ────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% auto;
+  animation: skeleton-shimmer 1.5s linear infinite;
+  border-radius: 8px;
+}
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}
+
+/* ──────────────────────────────────────────────
+   Badge
+   ────────────────────────────────────────────── */
+.badge-success {
+  background: #d1fae5;
+  color: #065f46;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 9999px;
+}
+.badge-danger {
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 9999px;
+}
+.badge-amber {
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 9999px;
+}
+.badge-blue {
+  background: #ede9fe;
+  color: #3730a3;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 9999px;
+}
+.badge-live {
+  background: #fee2e2;
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  letter-spacing: 0.05em;
+}
+
+/* ──────────────────────────────────────────────
+   Spinner
+   ────────────────────────────────────────────── */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(99, 102, 241, 0.25);
+  border-top-color: var(--accent-blue);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  display: inline-block;
+}
+.spinner-white {
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  display: inline-block;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ──────────────────────────────────────────────
+   Modal backdrop
+   ────────────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+/* ──────────────────────────────────────────────
+   OTP input shake
+   ────────────────────────────────────────────── */
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+.shake {
+  animation: shake 0.4s ease;
+}
+
+/* ──────────────────────────────────────────────
+   Utility
+   ────────────────────────────────────────────── */
+.interactive {
+  transition: transform 0.15s;
+  cursor: pointer;
+}
+.interactive:hover {
+  transform: scale(1.02);
+}
+.interactive:active {
+  transform: scale(0.98);
+}
+
+.text-gradient-indigo {
+  background: linear-gradient(135deg, #6366f1, #818cf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-blue {
+  background: linear-gradient(135deg, #93c5fd, #60a5fa 45%, #38bdf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.kavach-card {
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 20px;
+  backdrop-filter: blur(8px);
+}
+
+.btn-kavach-primary {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.35);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.btn-kavach-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.42);
+}
+
+.btn-kavach-primary:active {
+  transform: translateY(0);
+}
+
+.border-glow-blue {
+  border-color: rgba(96, 165, 250, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(96, 165, 250, 0.45),
+    0 0 28px rgba(59, 130, 246, 0.25);
+}
+
+.loading-spinner {
+  border-color: rgba(15, 23, 42, 0.16);
+  border-top-color: #111827;
+  border-radius: 9999px;
+  animation: spin 0.7s linear infinite;
+}
