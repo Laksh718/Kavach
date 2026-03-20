@@ -1,9 +1,7 @@
 import joblib
 import os
 
-from pathlib import Path
-MODEL_DIR = Path(__file__).resolve().parent.parent / "models"
-MODEL_PATH = str(MODEL_DIR / "disruption_model.pkl")
+MODEL_PATH = "ml/models/disruption_model.pkl"
 
 def load_disruption_model():
     try:

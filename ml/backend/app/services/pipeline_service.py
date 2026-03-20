@@ -7,6 +7,7 @@ from backend.app.services.disruption_service import evaluate_disruption
 from backend.app.services.earnings_service import get_expected_earnings
 from backend.app.services.fraud_service import is_fraudulent
 from backend.app.services.payout_service import create_payout
+from backend.app.utils.weather_api import get_weather_data
 
 def run_full_pipeline(event: dict, worker: dict):
     """
@@ -75,3 +76,20 @@ def run_full_pipeline(event: dict, worker: dict):
         "payout": payout,
         "loss": loss
     }
+
+def run_pipeline_with_live_weather(city: str, worker: dict):
+    print(f"\n🌍 Fetching live weather for {city}")
+    weather = get_weather_data(city)
+    if not weather:
+        return {"status": "WEATHER_API_FAILED"}
+    print("🌦️ Weather Data:", weather)
+    
+    # merge weather into event
+    event = {
+        **weather,
+        "day_of_week": 5,
+        "hour_bucket": 2,
+        "city": 1,
+        "platform": 0
+    }
+    return run_full_pipeline(event, worker)

@@ -7,9 +7,7 @@ import joblib
 from ml.utils.earnings_helpers import compute_deviation_factor, adjust_prediction
 
 # Load model
-from pathlib import Path
-MODEL_DIR = Path(__file__).resolve().parent.parent / "models"
-MODEL_PATH = str(MODEL_DIR / "earnings_model.pkl")
+MODEL_PATH = "ml/models/earnings_model.pkl"
 try:
     model = joblib.load(MODEL_PATH)
 except Exception as e:

@@ -7,9 +7,7 @@ import joblib
 from ml.utils.fraud_features import build_fraud_features
 
 # Load model
-from pathlib import Path
-MODEL_DIR = Path(__file__).resolve().parent.parent / "models"
-MODEL_PATH = str(MODEL_DIR / "fraud_model.pkl")
+MODEL_PATH = "ml/models/fraud_model.pkl"
 try:
     model = joblib.load(MODEL_PATH)
 except Exception as e:

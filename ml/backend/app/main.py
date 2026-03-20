@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from backend.app.services.pipeline_service import run_full_pipeline
 from backend.app.services.payout_service import get_all_payouts
 from backend.app.routers import predictions
+from backend.app.services.pipeline_service import run_pipeline_with_live_weather
 
 app = FastAPI(
     title="Kavach-ML Model API",
@@ -68,6 +69,21 @@ def run_pipeline(req: PipelineRequest):
 @app.get("/payouts")
 def get_payouts():
     return get_all_payouts()
+
+@app.get("/run-live/{city}")
+def run_live(city: str):
+    worker = {
+        "worker_id": 999,
+        "avg_earnings": 300,
+        "actual_earnings": 120,
+        "fraud_features": {
+            "active_hours": 5,
+            "gps_variance": 1.5,
+            "earnings_drop": 0.6,
+            "claim_frequency": 1
+        }
+    }
+    return run_pipeline_with_live_weather(city, worker)
 
 # Include other detailed prediction endpoints for full Swagger reference
 app.include_router(predictions.router)
