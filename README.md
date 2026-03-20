@@ -40,7 +40,7 @@ KAVACH is an **AI-powered parametric income protection platform** for India’s 
 
 - **Business model:**
   - B2B2C MGA under IRDAI sandbox pathway
-  - Weekly pricing ₹35–₹99 via UPI AutoPay
+  - Weekly pricing ₹350–₹700 via UPI AutoPay
   - Portable protection across multiple platforms
 
 - **Data innovation:**
