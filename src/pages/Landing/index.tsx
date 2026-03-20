@@ -125,7 +125,7 @@ function HeroSection() {
                 to="/onboard"
                 className="btn-kavach-primary px-8 py-4 text-lg font-semibold text-center rounded-2xl"
               >
-                Start Protection — ₹65/week
+                Start Protection — ₹350/week
               </Link>
               <a
                 href="#how-it-works"
@@ -195,7 +195,7 @@ function HowItWorksSection() {
       icon: "🛡️",
       step: "01",
       title: "Enroll in 3 minutes",
-      desc: "Mobile OTP + eKYC + UPI AutoPay. ₹65/week. Cancel anytime.",
+      desc: "Mobile OTP + eKYC + UPI AutoPay. Plans from ₹350/week. Cancel anytime.",
     },
     {
       icon: "🌧️",
@@ -438,7 +438,7 @@ function PersonaSection() {
       city: "Delhi-NCR",
       platform: "⚡ Zepto",
       risk: "High (AQI & heat)",
-      value: "₹588/week",
+      value: "₹5,880/week",
       avatar: "👨🏽",
     },
     {

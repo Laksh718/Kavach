@@ -18,12 +18,12 @@ interface PolicyState {
 export const usePolicyStore = create<PolicyState>((set) => ({
   tier: 'standard',
   status: 'active',
-  weeklyPremium: 65,
+  weeklyPremium: 500,
   pausesUsedThisYear: 0,
   nextRenewalDate: '2026-03-23T00:00:00Z',
 
   setTier: (tier) => {
-    const premiums: Record<PlanTier, number> = { starter: 35, standard: 65, shield: 99 }
+    const premiums: Record<PlanTier, number> = { starter: 350, standard: 500, shield: 700 }
     set({ tier, weeklyPremium: premiums[tier] })
   },
 
@@ -39,7 +39,7 @@ export const usePolicyStore = create<PolicyState>((set) => ({
   reset: () => set({
     tier: 'standard',
     status: 'active',
-    weeklyPremium: 65,
+    weeklyPremium: 500,
     pausesUsedThisYear: 0,
   }),
 }))
