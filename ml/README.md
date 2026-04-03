@@ -6,6 +6,17 @@ Instead of manual insurance claims, Kavach-ML Model automatically detects disrup
 
 ---
 
+# 🚀 Current Status: Phase 2 Managed
+The project has successfully moved past initial prototyping into a functional parametric pipeline with live data ingestion and trained ML models.
+
+### ✅ Key Accomplishments
+- **Hybrid Pipeline**: Integrated RandomForest (Disruption) and XGBoost (Earnings) with deterministic legal kill-switches.
+- **Rule Engine**: Fully implemented severity scaling and payout caps in Python.
+- **Live Ingestion**: IMD Scrapers for real-time weather monitoring are operational.
+- **Infrastructure**: Ready for deployment with Docker, Kubernetes manifests, and Terraform.
+
+---
+
 # Problem
 
 Gig economy workers rely on daily income.
@@ -47,74 +58,75 @@ No paperwork. No claim processing.
 
 # Features
 
-## Worker Protection
+## 🧠 Split-Architecture (ML + Rules)
+Kavach-ML follows the **Insurance-Grade "Golden Rule"**: **Machine Learning predicts, Deterministic Rules decide.** This ensures high predictive accuracy combined with 100% explainability for legal and compliance requirements.
 
-Workers receive automated payouts when disruptions affect their work.
+### 🔮 ML Predictions (Probabilistic)
+- **Disruption Prediction**: RandomForest model to assess weather impact probability.
+- **Earnings Baseline**: XGBoost model to estimate counterfactual income.
+- **Fraud Detection**: IsolationForest to identify adaptive anomaly patterns.
+- **Dynamic Risk Pricing**: Calculates weekly premiums based on worker risk and seasonality.
+- **Portfolio Risk**: Tracks zone exposure to prevent insolvency from catastrophic concentration.
 
-Examples:
-
-| Event            | Condition       | Payout |
-| ---------------- | --------------- | ------ |
-| Heavy Rain       | Rainfall > 50mm | ₹120   |
-| Extreme Heat     | Temp > 45°C     | ₹100   |
-| Severe Pollution | AQI > 350       | ₹100   |
-
----
-
-## Risk Prediction
-
-Machine learning models estimate disruption risk for different zones.
-
-Example:
-
-| Zone            | Risk Score | Premium  |
-| --------------- | ---------- | -------- |
-| Central Chennai | 0.21       | ₹10/week |
-| OMR             | 0.33       | ₹15/week |
-| North Chennai   | 0.48       | ₹22/week |
+### ⚖️ Deterministic Rules (Legal & Compliance)
+- **Coverage Eligibility**: Hard kill-switches for War, Pandemic, and Catastrophic exclusions. (Implemented in `eligibility_rules.py`).
+- **Severity Scaling**: Bucketed multipliers (50%, 100%, 120%) for rainfall intensity and AQI.
+    - **No Payout**: <40mm rain / <300 AQI
+    - **Half (0.5x)**: 40-70mm rain / 300-350 AQI
+    - **Full (1.0x)**: 70-120mm rain / 350-450 AQI
+    - **Extreme (1.2x)**: >120mm rain / >450 AQI
+- **Payout Constraints**: Enforces ₹50 minimum loss thresholds and ₹120 maximum payout caps per event.
+- **Policy Enforcement**: Handles nationwide lockdowns and platform-wide outages.
 
 ---
 
-## Automated Trigger System
+# Datasets & Sources
 
-Real-time monitoring of:
+## 📊 Dataset Inventory(KAGGLE AND GOVERNMENT)
+Comprehensive list of all external assets and their storage footprints:
 
-* Weather APIs
-* AQI data
-* Traffic data
-* Worker GPS activity
-
-Triggers payouts automatically.
+| Dataset Name | Source (URL) | Approx. Size |
+| :--- | :--- | :--- |
+| **BharatBench (Logistics)** | [Kaggle](https://www.kaggle.com/datasets/maslab/bharatbench) | 8.11 GB |
+| **Indian Weather Repository** | [Kaggle](https://www.kaggle.com/datasets/nelgiriyewithana/indian-weather-repository-daily-snapshot) | 2.50 GB |
+| **Historical Indian Weather** | [Kaggle](https://www.kaggle.com/datasets/pratikjadhav05/indian-weather-data) | 0.65 GB |
+| **Air Quality Data (India)** | [Kaggle](https://www.kaggle.com/datasets/rohanrao/air-quality-data-in-india) | 1.80 GB |
+| **Food Delivery Logs** | [Kaggle](https://www.kaggle.com/datasets/gauravmalik26/food-delivery-dataset) | 1.02 GB |
+| **Delivery Time Prediction** | [Kaggle](https://www.kaggle.com/datasets/denkuznetz/food-delivery-time-prediction) | 0.85 GB |
+| **IMD Gridded Rainfall (.nc)** | [IMD Pune](https://www.imdpune.gov.in/cmpg/Griddata/RF25_NetCDF.html) | 180 MB |
+| **IMD Gridded Rainfall (.grd)** | [IMD Pune](https://www.imdpune.gov.in/cmpg/Griddata/Rainfall_25_Bin.html) | 180 MB |
+| **CPCB AQI Repository** | [CPCB](https://airquality.cpcb.gov.in/ccr/#/caaqm-dashboard-all/caaqm-landing/aqi-repository) | 500 MB |
+| **OpenAQ Real-time** | [OpenAQ API](https://openaq.org/) | Dynamic |
+| **Sachet Alerts (NDMA)** | [Sachet](https://sachet.ndma.gov.in/) | API-based |
+| **Geographic Risk Data** | [DataDerivatives](https://www.dataderivatives.com/geographic-risk-data) | External |
+| **City Met Data (CSVs)** | [OpenCity.in](https://data.opencity.in/dataset?organization=india-meteorological-department) | 10 MB |
+| **Synthetic Activity Logs** | [Internal Generation](file:///data/synthetic/) | 50 MB |
 
 ---
 
-## Fraud Detection
+## 🏗️ Data Ingestion Logic
+Large-scale datasets are managed via two main modules:
+- **Kaggle Ingestions**: Managed via [load modules](file:///data/kaggleload/) (e.g., `load_indian_weather.py`, `load_rohanrao_aqi.py`).
+- **Real-time Scrapers**: Managed via [data/scrape/](file:///data/scrape/) including:
+    - `imd_scraper.py`: Automates IMD Pune's POST endpoints.
+    - `openaq_scraper.py`: Polls OpenAQ V2 API for target city measurements.
+    - `sachet_scraper.py`: Fetches official NDMA emergency alerts via POST endpoints.
+    - `cpcb_scraper.py`: Specialized crawler for the National Air Quality portal.
 
-Prevents misuse through anomaly detection:
+# System Architecture (Parametric Pipeline)
 
-* GPS spoofing detection
-* Activity pattern validation
-* Weather verification
-* Device fingerprinting
-
----
-
-# System Architecture
-
-```
-Worker App
-     │
-API Gateway
-     │
- ┌─────────────┬─────────────┬─────────────┐
- │             │             │
-Risk Engine   Trigger Engine   Fraud Engine
- │             │             │
- └─────────────┴─────────────┘
-          │
-      Payout Engine
-          │
-      Payment APIs
+```mermaid
+graph TD
+    A[Weather API] --> B{ML: Disruption}
+    B -- Predicted --> C{RULE: Eligibility}
+    C -- Eligible --> D[ML: Earnings Baseline]
+    D --> E{RULE: Adjusted Loss}
+    E --> F{RULE: Severity Scaling}
+    F -- Scaled --> G{ML: Fraud Check}
+    G -- Passed --> H{RULE: Payout Caps}
+    H --> I[Final APPROVED Payout]
+    C -- Excluded --> J[REJECTED: Clause]
+    G -- Flagged --> K[HOLD: Fraud Review]
 ```
 
 ---
@@ -159,17 +171,30 @@ Risk Engine   Trigger Engine   Fraud Engine
 
 ```
 kavach-ml-model/
-│
-├── backend/
-├── frontend/
+├── backend/app/
+│   ├── services/           # The Decision Pipeline (ML+Rules)
+│   │   ├── eligibility_rules.py
+│   │   ├── severity_rules.py
+│   │   ├── payout_rules.py
+│   │   └── pipeline_service.py
+│   ├── models/             # Database Schemas
+│   └── main.py             # FastAPI Entrypoint
 ├── ml/
+│   ├── models/             # Predictors (XGBoost, RandomForest)
+│   ├── inference/          # Prediction Logic
+│   └── datasets/           # Processed Training Data
 ├── data/
-├── pipelines/
-├── services/
-├── infra/
-├── tests/
-├── configs/
-└── docs/
+│   ├── raw/                # Kaggle & IMD Scraped Content
+│   │   ├── bharatbench/    # 8.11 GB Dataset
+│   │   ├── gridded_rainfall/ 
+│   │   └── city_met_data/
+│   ├── kaggleload/         # Automated Scaffolding
+│   └── scrape/             # IMD Pune & OpenCity Scrapers
+├── configs/                # Model Thresholds & API Keys
+├── pipelines/              # Live monitoring scripts (AQI, Weather, Triggers)
+├── infra/                  # Docker, K8s Manifests, Terraform
+└── tests/                  # Accuracy & Fraud Benchmarks
+
 ```
 
 ---
@@ -230,24 +255,23 @@ http://localhost:8000/docs
 
 # Development Roadmap
 
-## Phase 1
+## Phase 1: Foundation (COMPLETED)
+- [x] Worker onboarding & Policy creation
+- [x] Weather trigger engine (Deterministic)
+- [x] Basic payout simulation
+- [x] Database schema & Seed data
 
-* Worker onboarding
-* Policy creation
-* Weather trigger engine
-* Basic payout simulation
+## Phase 2: Intelligence (COMPLETED)
+- [x] Risk prediction model (XGBoost)
+- [x] Fraud detection system (IsolationForest)
+- [x] Automated disruption monitoring (IMD Scrapers)
+- [x] Integrated Pipeline Service (ML + Rules)
 
-## Phase 2
-
-* Risk prediction model
-* Fraud detection system
-* Automated disruption monitoring
-
-## Phase 3
-
-* Real-time payout automation
-* Admin analytics dashboard
-* Risk heatmaps
+## Phase 3: Automation & Scale (IN-PROGRESS)
+- [/] Real-time payout automation (Trigger scripts ready)
+- [ ] Risk Heatmaps (Frontend visualization)
+- [ ] Admin/Provider analytics dashboard
+- [ ] Mobile App for gig workers
 
 ---
 
