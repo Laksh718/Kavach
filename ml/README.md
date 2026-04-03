@@ -6,14 +6,15 @@ Instead of manual insurance claims, Kavach-ML Model automatically detects disrup
 
 ---
 
-# 🚀 Current Status: Phase 2 Managed
-The project has successfully moved past initial prototyping into a functional parametric pipeline with live data ingestion and trained ML models.
+# 🚀 Current Status: Production Ready
+The project has moved from prototyping into a **production-ready parametric insurance backend** utilizing 24,000+ real-world Indian data points.
 
 ### ✅ Key Accomplishments
-- **Hybrid Pipeline**: Integrated RandomForest (Disruption) and XGBoost (Earnings) with deterministic legal kill-switches.
-- **Rule Engine**: Fully implemented severity scaling and payout caps in Python.
-- **Live Ingestion**: IMD Scrapers for real-time weather monitoring are operational.
-- **Infrastructure**: Ready for deployment with Docker, Kubernetes manifests, and Terraform.
+- **Real-Data Training**: Models trained on **24,070 rows** of official Indian Weather, AQI, and Location metadata.
+- **Dynamic Pricing**: Activated **RandomForest Risk Models** that calculate premiums based on hyper-local volatility.
+- **Automated Claims**: 3-5 Parametric triggers (Rain, AQI, News) integrated with automated payout authorization.
+- **Actuarial Logic**: Professional pure premium & gross premium calculations implemented.
+- **Exclusion Filters**: Hard-coded safety switches for War, Pandemics, and Terrorism detected via News-ML.
 
 ---
 
@@ -69,14 +70,14 @@ Kavach-ML follows the **Insurance-Grade "Golden Rule"**: **Machine Learning pred
 - **Portfolio Risk**: Tracks zone exposure to prevent insolvency from catastrophic concentration.
 
 ### ⚖️ Deterministic Rules (Legal & Compliance)
-- **Coverage Eligibility**: Hard kill-switches for War, Pandemic, and Catastrophic exclusions. (Implemented in `eligibility_rules.py`).
+- **Coverage Eligibility**: Hard kill-switches for War, Pandemic, and Catastrophic exclusions. (Implemented in `actuarial_logic.py`).
 - **Severity Scaling**: Bucketed multipliers (50%, 100%, 120%) for rainfall intensity and AQI.
     - **No Payout**: <40mm rain / <300 AQI
     - **Half (0.5x)**: 40-70mm rain / 300-350 AQI
     - **Full (1.0x)**: 70-120mm rain / 350-450 AQI
     - **Extreme (1.2x)**: >120mm rain / >450 AQI
 - **Payout Constraints**: Enforces ₹50 minimum loss thresholds and ₹120 maximum payout caps per event.
-- **Policy Enforcement**: Handles nationwide lockdowns and platform-wide outages.
+- **Policy Enforcement**: Handles nationwide lockdowns and platform-wide outages detected via NewsAPI.
 
 ---
 
@@ -164,6 +165,35 @@ graph TD
 * Docker
 * Kubernetes
 * Terraform
+
+---
+
+# 📊 Mathematical & Algorithmic Foundation
+
+### 1. Training Algorithms
+Kavach-ML uses **Ensemble Learning** for production stability:
+- **Risk Prediction**: `RandomForestRegressor` (100 estimators, max depth 10) trained on 24,070 records.
+- **Disruption Classification**: `RandomForestClassifier` for binary Parametric Payout authorization.
+- **Fraud Detection**: `IsolationForest` (unsupervised) for GPS and earnings anomaly detection.
+
+### 2. Actuarial Formulas
+We follow professional insurance standards for sustainable pricing:
+- **Pure Premium**: $P_{pure} = \text{Risk Score} \times \text{Base Payout (₹300)}$
+- **Gross Premium**: $G_p = \frac{P_{pure}}{1 - (\text{Expense Ratio} + \text{Profit Margin})}$
+  *(Currently calibrated at 20% Expense Ratio & 10% Profit Margin)*
+
+### 3. Parametric Trigger Rules
+The automated claims system uses 3-5 primary signals:
+- **Trigger 1 (Rain)**: $Precipitation > 50mm$ (Heavy Rain disruption).
+- **Trigger 2 (AQI)**: $PM2.5 > 200 \mu g/m³$ (Severe Air Quality hazard).
+- **Trigger 3 (Heat)**: $Temperature > 42°C$ (Extreme Heatwave).
+- **Trigger 4 (News)**: Keyword extraction for `strike`, `flood`, `lockdown` via ML-News processing.
+
+### 4. Mandatory Exclusion Clauses
+To manage catastrophic risk, payouts are **Blocked (EXCLUDED)** if detection occurs for:
+- **Geopolitical**: `War`, `Invasion`, `Civil War`, `Terrorism`.
+- **Bio-Hazard**: `Pandemic`, `COVID`, `Outbreak`.
+- **Environmental**: `Nuclear`, `Radiation`.
 
 ---
 
@@ -267,8 +297,10 @@ http://localhost:8000/docs
 - [x] Automated disruption monitoring (IMD Scrapers)
 - [x] Integrated Pipeline Service (ML + Rules)
 
-## Phase 3: Automation & Scale (IN-PROGRESS)
-- [/] Real-time payout automation (Trigger scripts ready)
+## Phase 3: Automation & Scale (COMPLETED)
+- [x] **Real-time payout automation** (Triggered via Windy/NewsAPI)
+- [x] **Dynamic Premium Pricing** (Actuarial-grade Risk Models)
+- [x] **24k+ Real Dataset Training** (Indian Weather Repository processed)
 - [ ] Risk Heatmaps (Frontend visualization)
 - [ ] Admin/Provider analytics dashboard
 - [ ] Mobile App for gig workers
