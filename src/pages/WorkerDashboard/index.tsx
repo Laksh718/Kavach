@@ -6,15 +6,17 @@ import { PolicyTab } from "./PolicyTab";
 import { PayoutsTab } from "./PayoutsTab";
 import { ZoneMapTab } from "./ZoneMapTab";
 import { TrustKarmaTab } from "./TrustKarmaTab";
+import { MlInsightsTab } from "./MlInsightsTab";
+import { EarningsPlannerTab } from "./EarningsPlannerTab";
 import { cn } from "@/utils/cn";
-import { Home, CreditCard, Banknote, Map, Star } from "lucide-react";
+import { Home, CreditCard, Banknote, Star, Brain, TrendingUp } from "lucide-react";
 
 const mobileNavItems = [
-  { to: "/dashboard", icon: Home, label: "Home", end: true },
-  { to: "/dashboard/policy", icon: CreditCard, label: "Policy", end: false },
-  { to: "/dashboard/payouts", icon: Banknote, label: "Payouts", end: false },
-  { to: "/dashboard/zone-map", icon: Map, label: "Map", end: false },
-  { to: "/dashboard/trust-karma", icon: Star, label: "Karma", end: false },
+  { to: "/dashboard",          icon: Home,       label: "Home",    end: true  },
+  { to: "/dashboard/policy",   icon: CreditCard, label: "Policy",  end: false },
+  { to: "/dashboard/payouts",  icon: Banknote,   label: "Payouts", end: false },
+  { to: "/dashboard/planner",  icon: TrendingUp, label: "Planner", end: false },
+  { to: "/dashboard/ai",       icon: Brain,      label: "AI",      end: false },
 ];
 
 export default function WorkerDashboard() {
@@ -69,6 +71,8 @@ export default function WorkerDashboard() {
                 <Route path="payouts" element={<PayoutsTab />} />
                 <Route path="zone-map" element={<ZoneMapTab />} />
                 <Route path="trust-karma" element={<TrustKarmaTab />} />
+                <Route path="ai" element={<MlInsightsTab />} />
+                <Route path="planner" element={<EarningsPlannerTab />} />
                 <Route
                   path="settings"
                   element={

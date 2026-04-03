@@ -11,5 +11,13 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    proxy: {
+      '/kavach-ml': {
+        target: 'https://kavach-ml-y38n.onrender.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/kavach-ml/, ''),
+        secure: true,
+      },
+    },
   },
 })
