@@ -10,6 +10,7 @@ import { Modal } from '@/components/shared/Modal'
 import { formatRupee } from '@/utils/formatRupee'
 import { cn } from '@/utils/cn'
 import { kavachMlApi } from '@/services/api/kavachMlApi'
+import { usePayouts } from '@/hooks/useDatabase'
 
 type FilterType = 'all' | 'rain' | 'aqi' | 'flood' | 'heat' | 'curfew'
 type FilterDate = 'week' | 'month' | '3months'
@@ -374,18 +375,19 @@ function PayoutRow({ payout }: { payout: typeof allPayouts[0] }) {
 export function PayoutsTab() {
   const [typeFilter, setTypeFilter] = useState<FilterType>('all')
   const [dateFilter, setDateFilter] = useState<FilterDate>('month')
+  const { data: dbPayouts, loading: payoutsLoading } = usePayouts()
 
   const filtered = useMemo(() => {
-    let result = allPayouts
-    if (typeFilter !== 'all') result = result.filter(p => p.type === typeFilter)
+    let result = dbPayouts.length > 0 ? dbPayouts : allPayouts
+    if (typeFilter !== 'all') result = (result as any).filter((p: any) => p.type === typeFilter)
     const now = new Date('2026-03-20')
-    if (dateFilter === 'week')  result = result.filter(p => (now.getTime() - new Date(p.date).getTime()) < 7 * 86400000)
-    if (dateFilter === 'month') result = result.filter(p => (now.getTime() - new Date(p.date).getTime()) < 30 * 86400000)
+    if (dateFilter === 'week')  result = (result as any).filter((p: any) => (now.getTime() - new Date(p.date).getTime()) < 7 * 86400000)
+    if (dateFilter === 'month') result = (result as any).filter((p: any) => (now.getTime() - new Date(p.date).getTime()) < 30 * 86400000)
     return result
-  }, [typeFilter, dateFilter])
+  }, [typeFilter, dateFilter, dbPayouts])
 
-  const total = allPayouts.reduce((s, p) => s + p.amount, 0)
-  const thisMonth = allPayouts.filter(p => new Date(p.date) >= new Date('2026-03-01')).reduce((s, p) => s + p.amount, 0)
+  const total = (dbPayouts.length > 0 ? dbPayouts : allPayouts).reduce((s, p) => s + p.amount, 0)
+  const thisMonth = (dbPayouts.length > 0 ? dbPayouts : allPayouts).filter(p => new Date(p.date) >= new Date('2026-03-01')).reduce((s, p) => s + p.amount, 0)
 
   return (
     <div className="p-6 space-y-5 w-full">
@@ -425,7 +427,12 @@ export function PayoutsTab() {
       </div>
 
       {/* Payout list */}
-      {filtered.length === 0 ? (
+      {payoutsLoading ? (
+        <div className="py-20 text-center">
+          <div className="spinner mx-auto mb-4" />
+          <p className="text-[#64748B]">Loading payouts...</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="k-card text-center py-12">
           <div className="text-5xl mb-3">🛡️</div>
           <p className="text-[#0F172A] font-semibold">No payouts yet</p>
@@ -433,7 +440,7 @@ export function PayoutsTab() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map(p => <PayoutRow key={p.id} payout={p} />)}
+          {filtered.map((p: any) => <PayoutRow key={p.id} payout={p} />)}
         </div>
       )}
     </div>

@@ -67,3 +67,16 @@ CREATE TYPE payment_status AS ENUM (
   'SUCCESS',
   'FAILED'
 );
+
+-- Supported Platforms
+CREATE TYPE platform_type AS ENUM (
+  'Zomato',
+  'Swiggy',
+  'Zepto',
+  'Blinkit',
+  'Amazon Flex',
+  'Flipkart Quick',
+  'Uber',
+  'Ola',
+  'Porter'
+);

@@ -29,6 +29,7 @@ export interface Worker {
   platforms: Platform[];
   kycStatus: KYCStatus;
   language: Language;
+  tier?: PlanTier;
   createdAt: string;
 }
 

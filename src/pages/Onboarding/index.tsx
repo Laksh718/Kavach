@@ -13,6 +13,7 @@ import { formatRupee } from "@/utils/formatRupee";
 import type { PlanTier } from "@/types/worker.types";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/authStore";
+import { dbService } from "@/services/db";
 import { Mail, Lock, User as UserIcon, ArrowRight, LogIn } from "lucide-react";
 
 // ─── Confetti ────────────────────────────────────────────────
@@ -368,12 +369,20 @@ function Step4({ onNext }: { onNext: () => void }) {
     }, 1500);
   };
 
+  const { user } = useAuthStore();
   const handleVerify = async () => {
+    if (!user) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 2000));
-    setLoading(false);
-    toast.success("Identity verified ✓");
-    onNext();
+    try {
+      await dbService.updateProfile(user.id, { kycStatus: "verified" });
+      setLoading(false);
+      toast.success("Identity verified ✓");
+      onNext();
+    } catch (e) {
+      console.error(e);
+      toast.error("Error updating profile");
+      setLoading(false);
+    }
   };
 
   return (
@@ -553,7 +562,17 @@ function Step5({ onNext }: { onNext: () => void }) {
         })}
       </div>
       <button
-        onClick={onNext}
+        onClick={async () => {
+          const { user } = useAuthStore.getState();
+          if (user) {
+            try {
+              await dbService.updateProfile(user.id, { platforms: selected as any });
+            } catch (e) {
+              console.error(e);
+            }
+          }
+          onNext();
+        }}
         className="btn-primary w-full"
         disabled={selected.length === 0}
       >
@@ -860,11 +879,22 @@ function Step8({ onNext }: { onNext: () => void }) {
   >({});
 
   const handleUpi = async (id: string) => {
+    const { user } = useAuthStore.getState();
+    if (!user) return;
+
     setStatus((s) => ({ ...s, [id]: "loading" }));
-    await new Promise((r) => setTimeout(r, 1500));
-    setStatus((s) => ({ ...s, [id]: "done" }));
-    toast.success("AutoPay mandate created ✓");
-    setTimeout(onNext, 600);
+    try {
+      await Promise.all([
+        dbService.recordAutoPayMandate(user.id, id),
+        dbService.createPolicy(user.id, tier, weeklyPremium)
+      ]);
+      setStatus((s) => ({ ...s, [id]: "done" }));
+      toast.success("AutoPay mandate created ✓");
+      setTimeout(onNext, 600);
+    } catch (e) {
+      toast.error("Error setting up AutoPay");
+      setStatus((s) => ({ ...s, [id]: "idle" }));
+    }
   };
 
   return (

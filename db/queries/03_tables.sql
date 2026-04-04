@@ -18,7 +18,7 @@ CREATE INDEX IF NOT EXISTS idx_zones_geom ON zones USING GIST (geom);
 CREATE TABLE IF NOT EXISTS worker_profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name TEXT NOT NULL,
-  phone TEXT UNIQUE NOT NULL,
+  phone TEXT UNIQUE,
   vpa TEXT,
   zone_id TEXT REFERENCES zones(id),
   trust_karma_score INT DEFAULT 800 CHECK (trust_karma_score BETWEEN 0 AND 1000),
@@ -67,14 +67,15 @@ CREATE INDEX IF NOT EXISTS idx_policies_zone ON policies(zone_id);
 CREATE INDEX IF NOT EXISTS idx_policies_active ON policies(zone_id) WHERE status = 'ACTIVE';
 
 -- AutoPay Mandates
-CREATE TABLE IF NOT EXISTS autopay_mandates (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  worker_id UUID NOT NULL REFERENCES worker_profiles(id),
-  razorpay_mandate_id TEXT UNIQUE,
-  status mandate_status DEFAULT 'PENDING',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+  CREATE TABLE IF NOT EXISTS autopay_mandates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    worker_id UUID NOT NULL REFERENCES worker_profiles(id),
+    razorpay_mandate_id TEXT UNIQUE,
+    upi_platform TEXT, -- Added for onboarding flexibility
+    status mandate_status DEFAULT 'PENDING',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+  );
 
 -- Disruptions (Live Alerts)
 CREATE TABLE IF NOT EXISTS disruptions (

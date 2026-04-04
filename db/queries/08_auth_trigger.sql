@@ -9,7 +9,7 @@ BEGIN
   VALUES (
     new.id, 
     COALESCE(new.raw_user_meta_data->>'full_name', 'New KAVACH User'),
-    COALESCE(new.phone, 'Pending Verification') -- Fallback if phone isn't provided immediately
+    new.phone -- Fallback to NULL if phone isn't provided immediately
   );
   RETURN NEW;
 END;
