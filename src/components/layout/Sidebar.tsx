@@ -25,7 +25,7 @@ const navItems = [
 ];
 
 export function Sidebar() {
-  const { worker, logout } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const navigate = useNavigate();
 
   return (
@@ -62,11 +62,11 @@ export function Sidebar() {
       <div className="pt-4 border-t border-[#A5B4FC]">
         <div className="flex items-center gap-3 px-3 py-3 rounded-2xl bg-white/60">
           <div className="w-9 h-9 rounded-full bg-[#111827] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-            {worker?.name?.charAt(0) ?? "R"}
+            {user?.user_metadata?.full_name?.charAt(0) ?? "K"}
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold text-[#111827] truncate">
-              {worker?.name ?? "Rajan Kumar"}
+              {user?.user_metadata?.full_name ?? "Kavach User"}
             </div>
             <div className="flex items-center gap-1.5 mt-0.5">
               <div className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
@@ -74,8 +74,8 @@ export function Sidebar() {
             </div>
           </div>
           <button
-            onClick={() => {
-              logout();
+            onClick={async () => {
+              await logout();
               navigate("/");
             }}
             className="text-[#64748B] hover:text-[#0F172A] transition-colors"

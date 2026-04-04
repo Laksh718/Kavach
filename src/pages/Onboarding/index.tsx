@@ -1,4 +1,4 @@
-import { useState, useRef, createRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -11,6 +11,9 @@ import i18n from "@/i18n";
 import { cn } from "@/utils/cn";
 import { formatRupee } from "@/utils/formatRupee";
 import type { PlanTier } from "@/types/worker.types";
+import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/store/authStore";
+import { Mail, Lock, User as UserIcon, ArrowRight, LogIn } from "lucide-react";
 
 // ─── Confetti ────────────────────────────────────────────────
 const CONFETTI_COLORS = [
@@ -188,128 +191,156 @@ function Step2({ onNext }: { onNext: () => void }) {
   );
 }
 
-// ─── Step 3: OTP ───────────────────────────────────────────────
+// ─── Step 3: Account Creation (Email/Pass) ─────────────────────
 function Step3({ onNext }: { onNext: () => void }) {
-  const [phone, setPhone] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState(["", "", "", ""]);
-  const shakeRefs = useRef(
-    Array.from({ length: 4 }, () => createRef<HTMLInputElement>()),
-  );
-  const [shake, setShake] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [isLogin, setIsLogin] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { setSession, isAuthenticated } = useAuthStore();
 
-  const sendOtp = async () => {
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setLoading(false);
-    setOtpSent(true);
-    toast.success(`OTP sent to +91 ${phone.slice(0, 5)}XXXXX`);
-  };
-
-  const handleOtpChange = (idx: number, val: string) => {
-    const digit = val.replace(/\D/g, "").slice(0, 1);
-    const next = [...otp];
-    next[idx] = digit;
-    setOtp(next);
-    if (digit && idx < 3) shakeRefs.current[idx + 1]?.current?.focus();
-
-    const full = next.join("");
-    if (full.length === 4) {
-      if (/^\d{4}$/.test(full)) {
-        setTimeout(onNext, 300);
-        toast.success("OTP verified ✓");
-      } else {
-        setShake(true);
-        setTimeout(() => setShake(false), 500);
-      }
+  useEffect(() => {
+    if (isAuthenticated) {
+      onNext();
     }
-  };
+  }, [isAuthenticated, onNext]);
 
-  const handleOtpKeyDown = (idx: number, e: React.KeyboardEvent) => {
-    if (e.key === "Backspace" && !otp[idx] && idx > 0)
-      shakeRefs.current[idx - 1]?.current?.focus();
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      if (isLogin) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+        if (data.session) {
+          setSession(data.session);
+          toast.success("Welcome back! ✓");
+          onNext();
+        }
+      } else {
+        if (!fullName.trim()) {
+          toast.error("Please enter your full name");
+          setLoading(false);
+          return;
+        }
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: fullName,
+            },
+          },
+        });
+        if (error) throw error;
+        if (data.session) {
+          setSession(data.session);
+          toast.success("Account created! 🎉");
+          onNext();
+        } else {
+          toast.success("Check your email for confirmation!");
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Authentication failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="text-center sm:text-left">
         <h2 className="font-syne font-bold text-3xl text-[#0F172A]">
-          Verify your number
+          {isLogin ? "Welcome back" : "Create your account"}
         </h2>
         <p className="text-[#64748B] mt-1">
-          We'll send a one-time password by SMS
+          {isLogin 
+            ? "Login to manage your KAVACH protection" 
+            : "Join the most trusted platform for gig workers"}
         </p>
       </div>
-      {!otpSent ? (
-        <>
-          <div>
-            <label className="text-sm font-medium text-[#64748B] block mb-2">
-              Mobile number
+
+      <form onSubmit={handleAuth} className="space-y-4">
+        {!isLogin && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-[#64748B] flex items-center gap-2">
+              <UserIcon size={16} /> Full Name
             </label>
-            <div className="flex gap-2">
-              <div
-                className="k-card-sm px-4 py-3 text-[#0F172A] font-mono text-sm flex-shrink-0"
-                style={{ borderRadius: 12 }}
-              >
-                +91
-              </div>
-              <input
-                value={phone}
-                onChange={(e) =>
-                  setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
-                }
-                placeholder="9876543210"
-                className="k-input"
-                maxLength={10}
-              />
-            </div>
+            <input
+              required
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Enter your full name"
+              className="k-input"
+            />
           </div>
-          <button
-            onClick={sendOtp}
-            className="btn-primary w-full flex items-center justify-center gap-2"
-            disabled={phone.length !== 10 || loading}
-          >
-            {loading && <span className="spinner-white w-4 h-4" />} Send OTP
-          </button>
-        </>
-      ) : (
-        <div className="space-y-5">
-          <p className="text-sm text-[#64748B]">
-            Enter the 4-digit code sent to{" "}
-            <strong>+91 {phone.slice(0, 5)}·····</strong>
-          </p>
-          <div className={cn("flex gap-3 justify-center", shake && "shake")}>
-            {otp.map((d, i) => (
-              <input
-                key={i}
-                ref={shakeRefs.current[i]}
-                type="number"
-                value={d}
-                onChange={(e) => handleOtpChange(i, e.target.value)}
-                onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                className="w-14 h-14 text-center text-2xl font-mono font-bold border-2 rounded-2xl outline-none focus:border-[#6366F1] bg-[#F1F5F9] text-[#0F172A] transition-colors"
-                style={{ borderColor: d ? "#6366F1" : "#E2E8F0" }}
-                onClick={() => shakeRefs.current[i]?.current?.select()}
-              />
-            ))}
-          </div>
-          <div className="text-center">
-            <span className="text-sm text-[#94A3B8] bg-[#EEF2FF] px-3 py-1 rounded-full">
-              💡 Demo mode — enter any 4-digit code (e.g. 1234)
-            </span>
-          </div>
-          <button
-            onClick={() => {
-              setOtp(["", "", "", ""]);
-              toast.success("OTP resent!");
-            }}
-            className="text-sm text-[#6366F1] w-full text-center"
-          >
-            Resend OTP
-          </button>
+        )}
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-[#64748B] flex items-center gap-2">
+            <Mail size={16} /> Email Address
+          </label>
+          <input
+            required
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="worker@example.com"
+            className="k-input"
+          />
         </div>
-      )}
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-[#64748B] flex items-center gap-2">
+            <Lock size={16} /> Password
+          </label>
+          <input
+            required
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            className="k-input"
+            minLength={6}
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="btn-primary w-full flex items-center justify-center gap-2 py-4"
+        >
+          {loading ? (
+            <span className="spinner-white w-5 h-5" />
+          ) : isLogin ? (
+            <>
+              Login <LogIn size={20} />
+            </>
+          ) : (
+            <>
+              Create Account <ArrowRight size={20} />
+            </>
+          )}
+        </button>
+      </form>
+
+      <div className="text-center">
+        <button
+          onClick={() => setIsLogin(!isLogin)}
+          className="text-sm text-[#6366F1] font-medium hover:underline"
+        >
+          {isLogin 
+            ? "New to KAVACH? Create an account" 
+            : "Already have an account? Login here"}
+        </button>
+      </div>
     </div>
   );
 }

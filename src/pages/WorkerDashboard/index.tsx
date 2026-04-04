@@ -10,6 +10,7 @@ import { MlInsightsTab } from "./MlInsightsTab";
 import { EarningsPlannerTab } from "./EarningsPlannerTab";
 import { cn } from "@/utils/cn";
 import { Home, CreditCard, Banknote, Brain, TrendingUp } from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
 
 const mobileNavItems = [
   { to: "/dashboard",          icon: Home,       label: "Home",    end: true  },
@@ -35,7 +36,7 @@ export default function WorkerDashboard() {
               <div className="flex items-center gap-4">
                 <div>
                   <h1 className="font-syne font-bold text-4xl md:text-5xl text-[#111827] leading-none">
-                    Hello, Rajan!
+                    Hello, {useAuthStore.getState().user?.user_metadata?.full_name?.split(' ')[0] ?? "Partner"}!
                   </h1>
                   <p className="text-sm text-[#6B7280] mt-1">
                     All your policy and payout updates in one place.

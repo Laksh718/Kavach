@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { useAuthStore } from '@/store/authStore'
 
 // Lazy imports for code splitting
 const Landing = lazy(() => import('@/pages/Landing'))
@@ -27,6 +28,15 @@ function withSuspense(Component: React.ComponentType) {
   )
 }
 
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuthStore()
+
+  if (isLoading) return <PageLoader />
+  if (!isAuthenticated) return <Navigate to="/onboard" replace />
+
+  return <>{children}</>
+}
+
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -42,7 +52,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/dashboard/*',
-    element: withSuspense(WorkerDashboard),
+    element: (
+      <ProtectedRoute>
+        {withSuspense(WorkerDashboard)}
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/worker/*',
@@ -50,7 +64,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/admin/*',
-    element: withSuspense(AdminDashboard),
+    element: (
+      <ProtectedRoute>
+        {withSuspense(AdminDashboard)}
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/admin-dashboard/*',
@@ -58,7 +76,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/insurer/*',
-    element: withSuspense(InsurerPortal),
+    element: (
+      <ProtectedRoute>
+        {withSuspense(InsurerPortal)}
+      </ProtectedRoute>
+    ),
   },
   {
     path: '*',

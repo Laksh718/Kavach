@@ -586,7 +586,7 @@ export default function Landing() {
           </div>
           <div className="flex items-center gap-3">
             <Link
-              to="/dashboard"
+              to="/onboard"
               className="text-gray-300 text-sm font-dm hover:text-white"
             >
               Login
