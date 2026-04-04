@@ -70,13 +70,13 @@ CREATE TYPE payment_status AS ENUM (
 
 -- Supported Platforms
 CREATE TYPE platform_type AS ENUM (
-  'Zomato',
-  'Swiggy',
-  'Zepto',
-  'Blinkit',
-  'Amazon Flex',
-  'Flipkart Quick',
-  'Uber',
-  'Ola',
-  'Porter'
+  'zomato',
+  'swiggy',
+  'zepto',
+  'blinkit',
+  'amazon_flex',
+  'flipkart_quick',
+  'uber',
+  'ola',
+  'porter'
 );

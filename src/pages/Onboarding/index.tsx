@@ -1057,9 +1057,9 @@ function Step9() {
 
 // ─── Wizard Shell ─────────────────────────────────────────────
 const STEPS = [
+  "Verify Number",
   "Language",
   "Why KAVACH",
-  "Verify Number",
   "eKYC",
   "Platforms",
   "AA Consent",
@@ -1078,9 +1078,9 @@ export default function Onboarding() {
   };
 
   const stepComponents: Record<number, React.ReactNode> = {
-    0: <Step1 onNext={next} />,
-    1: <Step2 onNext={next} />,
-    2: <Step3 onNext={next} />,
+    0: <Step3 onNext={next} />,
+    1: <Step1 onNext={next} />,
+    2: <Step2 onNext={next} />,
     3: <Step4 onNext={next} />,
     4: <Step5 onNext={next} />,
     5: <Step6 onNext={next} />,

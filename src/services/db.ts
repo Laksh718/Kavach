@@ -73,6 +73,18 @@ export const dbService = {
   },
 
   async createPolicy(userId: string, tier: string, weeklyPremium: number) {
+    // 1. Check for existing active policy to avoid 409 Conflict
+    const { data: existing, error: checkError } = await supabase
+      .from('policies')
+      .select('*')
+      .eq('worker_id', userId)
+      .eq('status', 'ACTIVE')
+      .maybeSingle();
+
+    if (checkError) throw checkError;
+    if (existing) return existing;
+
+    // 2. Create new policy if none active
     const { data, error } = await supabase
       .from('policies')
       .insert({
