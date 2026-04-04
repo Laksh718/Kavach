@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { Shield, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Download, Zap, Clock, Sparkles } from 'lucide-react'
 import { Modal } from '@/components/shared/Modal'
@@ -197,7 +197,7 @@ export function PolicyTab() {
   }
 
   return (
-    <div className="p-6 max-w-2xl space-y-5">
+    <div className="p-6 space-y-5 w-full">
       {/* Plan switch modal */}
       <Modal open={!!switchModal} onClose={() => setSwitchModal(null)} title={`Switch to ${switchModal ? PLANS[switchModal.target].label : ''}`}>
         <p className="text-[#64748B] text-sm mb-4">

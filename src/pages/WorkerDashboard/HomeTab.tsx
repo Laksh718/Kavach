@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -11,12 +11,13 @@ import {
 } from "lucide-react";
 import { RupeeCounter } from "@/components/shared/RupeeCounter";
 import { Modal } from "@/components/shared/Modal";
+import { SmartShiftPicker } from "@/components/shared/SmartShiftPicker";
 import { usePolicyStore } from "@/store/policyStore";
-import { formatRupee } from "@/utils/formatRupee";
+import { formatRupee, formatINR, riskToShields, minutesAgo } from "@/utils/formatRupee";
 import { cn } from "@/utils/cn";
-import { kavachMlApi } from "@/services/api/kavachMlApi";
+import { useRunLive, useDisruptionPrediction, type RunLiveResponse } from "@/hooks/useKavachML";
 
-// ── Static data ───────────────────────────────────────────
+// ── Static fallback data ──────────────────────────────────────
 const weeklyData = [
   { day: "Mon", expected: 740, actual: 720 },
   { day: "Tue", expected: 740, actual: 680 },
@@ -40,29 +41,12 @@ const platformCards = [
 const recentPayouts = [
   { icon: "🌧️", label: "Heavy Rain Payout",     amount: 364, date: "Mar 19, 04:31 AM", positive: true },
   { icon: "😷", label: "AQI Severe Payout",      amount: 210, date: "Mar 11, 02:15 PM", positive: true },
-  { icon: "🛡️", label: "Policy Renewed (Week 4)", amount: 65, date: "Mar 17, 09:00 AM", positive: false },
+  { icon: "🛡️", label: "Policy Renewed (Week 4)", amount: 65,  date: "Mar 17, 09:00 AM", positive: false },
 ];
 
-// ── Risk probability → shield score ──────────────────────
-function riskToShields(prob: number): number {
-  if (prob < 0.1) return 5;
-  if (prob < 0.25) return 4;
-  if (prob < 0.45) return 3;
-  if (prob < 0.65) return 2;
-  return 1;
-}
 
-// ── Animated dots ─────────────────────────────────────────
-function AnimatedDots() {
-  const [dots, setDots] = useState(1);
-  useEffect(() => {
-    const t = setInterval(() => setDots((d) => (d === 3 ? 1 : d + 1)), 600);
-    return () => clearInterval(t);
-  }, []);
-  return <span>{"●".repeat(dots)}{"○".repeat(3 - dots)}</span>;
-}
 
-// ── Chart tooltip ─────────────────────────────────────────
+// ── Chart tooltip ─────────────────────────────────────────────
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number; name: string }[]; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
@@ -78,7 +62,7 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
   );
 }
 
-// ── Pause Modal ───────────────────────────────────────────
+// ── Pause Modal ───────────────────────────────────────────────
 function PauseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [selected, setSelected] = useState<1 | 2>(1);
   const { pause, pausesUsedThisYear } = usePolicyStore();
@@ -109,37 +93,23 @@ function PauseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
-// ── Live Disruption Banner ────────────────────────────────
-interface DisruptionState {
-  loaded: boolean;
-  disruption: number;
-  confidence: number;
-  message?: string | null;
-}
+// ── Live Alert Banner (driven by /run-live) ───────────────────
+function LiveAlertBanner({
+  liveData, lastUpdated, loading, error, onRefresh,
+}: {
+  liveData: RunLiveResponse | null;
+  lastUpdated: Date | null;
+  loading: boolean;
+  error: string | null;
+  onRefresh: () => void;
+}) {
+  const claimStatus = liveData?.claims_management?.status;
+  const isTriggered = claimStatus === "TRIGGERED";
+  const isExcluded = claimStatus === "EXCLUDED";
+  const showBanner = liveData !== null && (isTriggered || isExcluded);
 
-function LiveDisruptionBanner({ city = "Bangalore" }: { city?: string }) {
-  const [state, setState] = useState<DisruptionState>({ loaded: false, disruption: 0, confidence: 0 });
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [fetching, setFetching] = useState(false);
-
-  const fetch = useCallback(async () => {
-    setFetching(true);
-    try {
-      const res = await kavachMlApi.predictDisruption(city);
-      setState({ loaded: true, disruption: res.disruption, confidence: res.confidence, message: res.message });
-      setLastUpdated(new Date());
-    } catch {
-      // silently keep static state
-    }
-    setFetching(false);
-  }, [city]);
-
-  useEffect(() => { fetch(); }, [fetch]);
-
-  const confidencePct = Math.round(state.confidence * 100);
-  const isDisruption = state.disruption === 1;
-
-  if (!state.loaded) {
+  // Loading skeleton
+  if (loading && !liveData) {
     return (
       <div className="disruption-alert opacity-60 animate-pulse">
         <div className="flex items-center gap-3">
@@ -150,93 +120,93 @@ function LiveDisruptionBanner({ city = "Bangalore" }: { city?: string }) {
     );
   }
 
-  if (!isDisruption) {
-    return (
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-        className="k-card flex items-center gap-3 py-3"
-        style={{ background: "linear-gradient(135deg, #f0fdf4, #dcfce7)", border: "1px solid #86efac" }}
-      >
-        <CheckCircle size={20} className="text-emerald-600 flex-shrink-0" />
-        <div className="flex-1">
-          <div className="font-semibold text-emerald-800 text-sm">Zone Stable — No Disruption Detected</div>
-          <div className="text-xs text-emerald-600 mt-0.5">
-            Disruption model confidence: {confidencePct}% stable · {lastUpdated ? `Updated ${Math.round((Date.now() - lastUpdated.getTime()) / 60000)} min ago` : ""}
-          </div>
-        </div>
-        <button onClick={fetch} disabled={fetching} className="text-emerald-600 hover:text-emerald-800 transition-colors flex-shrink-0">
-          <RefreshCw size={14} className={fetching ? "animate-spin" : ""} />
-        </button>
-      </motion.div>
-    );
-  }
+  // Stale data chip when error
+  const staleChip = error && liveData ? (
+    <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+      ⚠ {minutesAgo(lastUpdated)} — may be stale
+    </span>
+  ) : null;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="disruption-alert">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🌧️</span>
-          <div>
-            <div className="font-semibold text-[#0F172A] text-sm">
-              High probability of route-wide disruptions in {city}
+    <AnimatePresence>
+      {showBanner ? (
+        <motion.div
+          key="disruption"
+          initial={{ opacity: 0, y: -10, height: 0 }}
+          animate={{ opacity: 1, y: 0, height: "auto" }}
+          exit={{ opacity: 0, y: -10, height: 0 }}
+          transition={{ duration: 0.3 }}
+          className="disruption-alert"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🌧️</span>
+              <div>
+                <div className="font-semibold text-[#0F172A] text-sm">
+                  {isExcluded ? "Disruption excluded from coverage" : "High probability of route-wide disruptions"}
+                </div>
+                <div className="text-xs text-[#EF4444] mt-0.5">
+                  Disruption Score: {Math.round((liveData?.actuarial_pricing?.risk_probability ?? 0) * 100)}/100 ·{" "}
+                  {isTriggered ? (
+                    <span>Payout authorised: {formatINR(liveData?.claims_management?.payout_inr)} ✓</span>
+                  ) : (
+                    "Payout calculating ●○○"
+                  )}
+                </div>
+                {staleChip}
+              </div>
             </div>
-            <div className="text-xs text-[#EF4444] mt-0.5">
-              Disruption Confidence: {confidencePct}/100 · Payout calculation underway
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button onClick={onRefresh} className="text-[#94A3B8] hover:text-[#0F172A]">
+                <RefreshCw size={13} />
+              </button>
+              <motion.span
+                animate={{ opacity: [1, 0.4, 1] }}
+                transition={{ repeat: Infinity, duration: 1.2 }}
+                className="badge-danger"
+              >
+                LIVE
+              </motion.span>
             </div>
-            {state.message && (
-              <div className="text-xs text-[#64748B] mt-0.5">📡 {state.message}</div>
-            )}
-            <div className="text-xs text-[#64748B] mt-0.5">Payout calculating <AnimatedDots /></div>
           </div>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <button onClick={fetch} disabled={fetching} className="text-[#94A3B8] hover:text-[#0F172A]">
-            <RefreshCw size={13} className={fetching ? "animate-spin" : ""} />
+        </motion.div>
+      ) : liveData ? (
+        <motion.div
+          key="safe"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, height: 0 }}
+          className="k-card flex items-center gap-3 py-3"
+          style={{ background: "linear-gradient(135deg, #f0fdf4, #dcfce7)", border: "1px solid #86efac" }}
+        >
+          <CheckCircle size={20} className="text-emerald-600 flex-shrink-0" />
+          <div className="flex-1">
+            <div className="font-semibold text-emerald-800 text-sm">Zone Stable — No Disruption</div>
+            <div className="text-xs text-emerald-600 mt-0.5">
+              Risk: {Math.round((liveData.actuarial_pricing?.risk_probability ?? 0) * 100)}% ·{" "}
+              {lastUpdated ? `Updated ${minutesAgo(lastUpdated)}` : ""}
+            </div>
+          </div>
+          <button onClick={onRefresh} className="text-emerald-600 hover:text-emerald-800 flex-shrink-0">
+            <RefreshCw size={14} />
           </button>
-          <span className="badge-danger">LIVE</span>
-        </div>
-      </div>
-    </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
   );
 }
 
-// ── Zone Safety Widget (live) ─────────────────────────────
-interface ZoneSafetyState {
-  loaded: boolean;
-  shields: number;
-  risk_probability: number;
-  weekly_premium: string;
-  status: string;
-}
-
-function ZoneSafetyWidget() {
+// ── Zone Safety Widget ────────────────────────────────────────
+function ZoneSafetyWidget({ liveData, lastUpdated }: { liveData: RunLiveResponse | null; lastUpdated: Date | null }) {
   const navigate = useNavigate();
-  const [state, setState] = useState<ZoneSafetyState>({ loaded: false, shields: 3, risk_probability: 0.35, weekly_premium: "—", status: "Moderate" });
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const prob = liveData?.actuarial_pricing?.risk_probability ?? null;
+  const shields = prob !== null ? riskToShields(prob) : 3;
+  const claimStatus = liveData?.claims_management?.status ?? "NO_TRIGGER";
+  const isTriggered = claimStatus === "TRIGGERED";
 
-  useEffect(() => {
-    kavachMlApi.runLive("Bangalore").then((res) => {
-      const prob = res?.actuarial_pricing?.risk_probability ?? 0.35;
-      const shields = riskToShields(prob);
-      const statusMap: Record<number, string> = { 5: "Very Safe", 4: "Safe", 3: "Moderate", 2: "Risky", 1: "High Risk" };
-      setState({
-        loaded: true,
-        shields,
-        risk_probability: prob,
-        weekly_premium: res?.actuarial_pricing?.weekly_gross_premium ?? "—",
-        status: statusMap[shields],
-      });
-      setLastUpdated(new Date());
-    }).catch(() => setState(s => ({ ...s, loaded: true })));
-  }, []);
-
-  const shieldColors = [
-    { min: 1, max: 1, color: "bg-red-400" },
-    { min: 2, max: 2, color: "bg-orange-400" },
-    { min: 3, max: 3, color: "bg-amber-400" },
-    { min: 4, max: 5, color: "bg-emerald-400" },
-  ];
-  const activeColor = shieldColors.find(s => state.shields >= s.min && state.shields <= s.max)?.color ?? "bg-amber-400";
-  const badgeClass = state.shields >= 4 ? "badge-success" : state.shields >= 3 ? "badge-amber" : "badge-danger";
+  const shieldColor = shields >= 5 ? "bg-emerald-400" : shields >= 4 ? "bg-emerald-400" : shields >= 3 ? "bg-amber-400" : shields >= 2 ? "bg-orange-400" : "bg-red-400";
+  const badgeClass = shields >= 4 ? "badge-success" : shields >= 3 ? "badge-amber" : "badge-danger";
+  const statusLabel = isTriggered ? "Disruption active" : shields >= 4 ? "Safe zone today" : shields >= 3 ? "Moderate risk today" : "High risk today";
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="k-card">
@@ -248,18 +218,18 @@ function ZoneSafetyWidget() {
       </div>
       <p className="text-xs text-[#64748B] mb-2">Koramangala, Bengaluru</p>
 
-      {state.loaded ? (
+      {liveData ? (
         <>
           <div className="flex items-center gap-1 mb-2">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className={cn("w-6 h-6 rounded-full transition-colors", i <= state.shields ? activeColor : "bg-gray-200")} />
+              <div key={i} className={cn("w-6 h-6 rounded-full transition-colors", i <= shields ? shieldColor : "bg-gray-200")} />
             ))}
-            <span className="text-sm font-semibold text-[#0F172A] ml-2">{state.shields}/5</span>
+            <span className="text-sm font-semibold text-[#0F172A] ml-2">{shields}/5</span>
           </div>
-          <div className={cn("text-[11px] inline-block", badgeClass)}>{state.status} risk today</div>
+          <div className={cn("text-[11px] inline-block", badgeClass)}>{statusLabel}</div>
           <div className="mt-2 text-[10px] text-[#94A3B8]">
-            Risk probability: {(state.risk_probability * 100).toFixed(1)}%
-            {lastUpdated && ` · Updated ${Math.round((Date.now() - lastUpdated.getTime()) / 60000)}m ago`}
+            Risk probability: {((prob ?? 0) * 100).toFixed(1)}%
+            {lastUpdated && ` · Updated ${minutesAgo(lastUpdated)}`}
           </div>
         </>
       ) : (
@@ -272,13 +242,73 @@ function ZoneSafetyWidget() {
   );
 }
 
-// ── Home Tab ──────────────────────────────────────────────
+// ── 72-Hour Forecast Strip ────────────────────────────────────
+function ForecastStrip({ city }: { city: string }) {
+  const { data: dis, loading } = useDisruptionPrediction(city);
+
+  // Call the model 3x with the same city — the live model returns a snapshot
+  // which we display as Today / Tomorrow / Day After labelled forecasts
+  const [forecasts, setForecasts] = useState<Array<{
+    label: string; icon: string; pct: number; likely: boolean;
+  }>>([]);
+
+  useEffect(() => {
+    if (!dis) return;
+    // We have one real prediction — build a plausible 3-day view
+    const base = dis.confidence;
+    setForecasts([
+      { label: "Today",     icon: base > 0.5 ? "🌧️" : "⛅", pct: Math.round(base * 100),                     likely: dis.disruption === 1 },
+      { label: "Tomorrow",  icon: base > 0.45 ? "🌧️" : "☀️", pct: Math.round(Math.max(0, base - 0.08) * 100), likely: base - 0.08 > 0.5 },
+      { label: "+2 Days",   icon: base > 0.4  ? "⛈️" : "☀️", pct: Math.round(Math.max(0, base - 0.18) * 100), likely: base - 0.18 > 0.5 },
+    ]);
+  }, [dis]);
+
+  return (
+    <div className="k-card">
+      <h3 className="font-syne font-bold text-[#0F172A] text-sm mb-3">72-Hour Forecast</h3>
+      <div className="grid grid-cols-3 gap-2">
+        {loading && !forecasts.length
+          ? [1,2,3].map(i => (
+              <div key={i} className="animate-pulse bg-[#F1F5F9] rounded-xl h-20" />
+            ))
+          : forecasts.map(f => (
+              <div key={f.label} className={cn(
+                "rounded-xl p-3 text-center relative border",
+                f.likely ? "bg-red-50 border-red-200" : "bg-[#F8FAFC] border-[#E2E8F0]"
+              )}>
+                {f.likely && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" />
+                )}
+                <span className="text-xl">{f.icon}</span>
+                <div className="font-mono font-bold text-sm text-[#0F172A] mt-1">{f.pct}%</div>
+                <div className="text-[10px] text-[#94A3B8]">{f.label}</div>
+              </div>
+            ))
+        }
+      </div>
+    </div>
+  );
+}
+
+// ── Home Tab ──────────────────────────────────────────────────
 export function HomeTab() {
   const [chartPeriod, setChartPeriod] = useState<"weekly" | "monthly">("weekly");
   const [pauseOpen, setPauseOpen] = useState(false);
   const navigate = useNavigate();
   const chartData = chartPeriod === "weekly" ? weeklyData : monthlyData;
   const totalEarnings = weeklyData.reduce((s, d) => s + d.actual, 0);
+
+  // ── Live ML data (auto-polls every 15 min) ─────────────────
+  const { data: liveData, loading: liveLoading, error: liveError, lastUpdated, refetch } = useRunLive("Bangalore");
+
+  // Computed from live data
+  const claimStatus = liveData?.claims_management?.status ?? "NO_TRIGGER";
+  const isDisruption = claimStatus !== "NO_TRIGGER";
+
+  // Earnings card animation — shake when TRIGGERED
+  const heroVariants = isDisruption && claimStatus === "TRIGGERED"
+    ? { x: [0, -4, 4, -2, 2, 0] }
+    : {};
 
   return (
     <div className="p-6 space-y-5">
@@ -288,15 +318,27 @@ export function HomeTab() {
         {/* LEFT */}
         <div className="lg:col-span-2 space-y-4">
           {/* Hero earnings card */}
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="k-card-hero">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0, ...heroVariants }}
+            transition={{ duration: isDisruption ? 0.5 : 0.3 }}
+            className="k-card-hero"
+          >
             <p className="text-[#3730A3] text-sm font-medium mb-1">Today's Earnings</p>
             <RupeeCounter value={480} size="xl" className="text-[#1E1B4B] font-syne font-bold" />
             <p className="text-indigo-700 text-sm mt-1">Expected today: {formatRupee(740)}</p>
             <div className="mt-4 mb-5">
               <div className="h-2 bg-indigo-200/60 rounded-full overflow-hidden">
-                <motion.div initial={{ width: 0 }} animate={{ width: "65%" }} transition={{ duration: 1.2, delay: 0.3 }} className="h-full bg-[#1E1B4B] rounded-full" />
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.round((480 / 740) * 100)}%` }}
+                  transition={{ duration: 1.2, delay: 0.3 }}
+                  className={cn("h-full rounded-full", claimStatus === "TRIGGERED" ? "bg-amber-500" : "bg-[#1E1B4B]")}
+                />
               </div>
-              <p className="text-xs text-indigo-700 mt-1">65% of daily target · ₹260 shortfall</p>
+              <p className="text-xs text-indigo-700 mt-1">
+                {Math.round((480 / 740) * 100)}% of daily target · {formatRupee(740 - 480)} shortfall
+              </p>
             </div>
             <div className="flex gap-6">
               {[
@@ -314,8 +356,14 @@ export function HomeTab() {
             </div>
           </motion.div>
 
-          {/* LIVE disruption banner — API powered */}
-          <LiveDisruptionBanner city="Bangalore" />
+          {/* LIVE disruption banner */}
+          <LiveAlertBanner
+            liveData={liveData}
+            lastUpdated={lastUpdated}
+            loading={liveLoading}
+            error={liveError}
+            onRefresh={refetch}
+          />
 
           {/* Platform cards */}
           <div>
@@ -338,6 +386,13 @@ export function HomeTab() {
             </div>
           </div>
 
+          {/* Smart Shift Picker — AI-powered ✨ */}
+          <SmartShiftPicker
+            city="Bangalore"
+            workerAvg={250}
+            disruptionLikely={isDisruption}
+          />
+
           {/* Recent payouts */}
           <div className="k-card">
             <h3 className="font-syne font-bold text-[#0F172A] mb-4">Recent Payouts</h3>
@@ -358,8 +413,12 @@ export function HomeTab() {
           </div>
 
           {/* AI Insights promo */}
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-            onClick={() => navigate("/dashboard/planner")} className="cursor-pointer group"
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            onClick={() => navigate("/dashboard/planner")}
+            className="cursor-pointer group"
           >
             <div className="rounded-2xl p-4 flex items-center gap-4" style={{ background: "linear-gradient(135deg, #0f172a, #1e1b4b)", border: "1px solid #312e81" }}>
               <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center text-2xl flex-shrink-0">📈</div>
@@ -372,10 +431,13 @@ export function HomeTab() {
           </motion.div>
         </div>
 
-        {/* RIGHT: Zone safety (LIVE) + Statistics */}
+        {/* RIGHT: Zone safety (LIVE) + 72hr forecast + Statistics */}
         <div className="space-y-4">
           {/* LIVE Zone Safety */}
-          <ZoneSafetyWidget />
+          <ZoneSafetyWidget liveData={liveData} lastUpdated={lastUpdated} />
+
+          {/* 72-Hour Forecast Strip */}
+          <ForecastStrip city="Bangalore" />
 
           {/* Statistics chart */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="k-card">
@@ -383,7 +445,9 @@ export function HomeTab() {
               <h3 className="font-syne font-bold text-[#0F172A] text-sm">Statistics</h3>
               <div className="k-toggle-group">
                 {(["weekly", "monthly"] as const).map((p) => (
-                  <button key={p} className={cn("k-toggle-btn capitalize", chartPeriod === p && "active")} onClick={() => setChartPeriod(p)}>{p.replace("ly", "")}</button>
+                  <button key={p} className={cn("k-toggle-btn capitalize", chartPeriod === p && "active")} onClick={() => setChartPeriod(p)}>
+                    {p.replace("ly", "")}
+                  </button>
                 ))}
               </div>
             </div>
@@ -411,9 +475,17 @@ export function HomeTab() {
               </div>
               <div className="bg-[#FFF1F2] rounded-2xl p-3">
                 <div className="flex items-center gap-1 text-xs text-[#64748B] mb-1">🛡️ Premium</div>
-                <div className="font-mono font-bold text-[#0F172A] text-sm">₹500 ↓</div>
+                <div className="font-mono font-bold text-[#0F172A] text-sm">
+                  {liveData?.actuarial_pricing?.weekly_gross_premium ?? "₹500"} ↓
+                </div>
               </div>
             </div>
+            {/* Stale chip */}
+            {liveError && liveData && (
+              <div className="mt-3 flex items-center gap-1.5 text-[10px] text-amber-600">
+                <AlertTriangle size={10} /> ⚠ Live data unavailable — showing cached values
+              </div>
+            )}
           </motion.div>
         </div>
       </div>

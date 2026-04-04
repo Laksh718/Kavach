@@ -14,10 +14,13 @@ import {
   ListChecks,
   Save,
   AlertTriangle,
+  RefreshCw,
+  ArrowUpDown,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { mockPipelineHealth } from "@/services/mock/disruption.mock";
-import { formatRupee, formatRupeeCompact } from "@/utils/formatRupee";
+import { formatRupee, formatRupeeCompact, formatINR, minutesAgo } from "@/utils/formatRupee";
+import { useAdminAllCities } from "@/hooks/useKavachML";
 
 const adminNav = [
   { to: "/admin", icon: Home, label: "Home", end: true },
@@ -247,97 +250,132 @@ function AdminHome() {
 
 function AdminDisruptions() {
   const [filter, setFilter] = useState<"all" | "active" | "resolved">("all");
-  const rows = [
-    {
-      city: "Bengaluru",
-      type: "Rain",
-      score: 78,
-      status: "active",
-      payout: 364000,
-    },
-    {
-      city: "Delhi-NCR",
-      type: "AQI",
-      score: 82,
-      status: "active",
-      payout: 588000,
-    },
-    {
-      city: "Mumbai",
-      type: "Flood",
-      score: 66,
-      status: "resolved",
-      payout: 259000,
-    },
-    {
-      city: "Chennai",
-      type: "Cyclone",
-      score: 74,
-      status: "resolved",
-      payout: 342000,
-    },
-  ];
+  const [sortDesc, setSortDesc] = useState(true);
+  const { cityRows, loading, lastUpdated, refetch } = useAdminAllCities();
 
-  const filteredRows = rows.filter(
-    (row) => filter === "all" || row.status === filter,
-  );
+  const filteredRows = useMemo(() => {
+    let rows = cityRows.filter(
+      (row) => filter === "all" || row.status === filter,
+    );
+    // Sort by risk probability descending (or ascending on toggle)
+    rows = [...rows].sort((a, b) =>
+      sortDesc
+        ? b.riskProbability - a.riskProbability
+        : a.riskProbability - b.riskProbability
+    );
+    return rows;
+  }, [cityRows, filter, sortDesc]);
 
   return (
     <div className="k-card p-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-1">
         <h2 className="font-syne font-bold text-3xl text-[#111827]">
           Disruption Events
         </h2>
-        <div className="k-toggle-group">
-          {(["all", "active", "resolved"] as const).map((value) => (
-            <button
-              key={value}
-              className={cn(
-                "k-toggle-btn capitalize",
-                filter === value && "active",
-              )}
-              onClick={() => setFilter(value)}
-            >
-              {value}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={refetch}
+            disabled={loading}
+            className="w-8 h-8 rounded-full bg-[#E4E4E7] flex items-center justify-center text-[#374151] hover:bg-[#D4D4D8] transition-colors"
+          >
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+          </button>
+          <div className="k-toggle-group">
+            {(["all", "active", "resolved"] as const).map((value) => (
+              <button
+                key={value}
+                className={cn(
+                  "k-toggle-btn capitalize",
+                  filter === value && "active",
+                )}
+                onClick={() => setFilter(value)}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
+
+      {/* Last updated timestamp */}
+      <p className="text-xs text-[#9CA3AF] mb-4">
+        {loading && !lastUpdated
+          ? "Fetching live data from 9 cities..."
+          : lastUpdated
+            ? `Data refreshed ${minutesAgo(lastUpdated)} · Auto-updates every 15 min`
+            : "Live data"}
+      </p>
+
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-[#6B7280] border-b border-[#E2E8F0]">
               <th className="py-3">City</th>
               <th className="py-3">Type</th>
-              <th className="py-3">Risk Score</th>
+              <th className="py-3">
+                <button
+                  className="flex items-center gap-1 hover:text-[#111827] transition-colors"
+                  onClick={() => setSortDesc(d => !d)}
+                >
+                  Risk Score <ArrowUpDown size={13} />
+                </button>
+              </th>
               <th className="py-3">Status</th>
               <th className="py-3">Estimated Payout</th>
             </tr>
           </thead>
           <tbody>
-            {filteredRows.map((row) => (
-              <tr
-                key={`${row.city}-${row.type}`}
-                className="border-b border-[#EDE9FE] text-[#111827]"
-              >
-                <td className="py-3">{row.city}</td>
-                <td className="py-3">{row.type}</td>
-                <td className="py-3">{row.score}/100</td>
-                <td className="py-3">
-                  <span
-                    className={cn(
-                      "px-2 py-1 rounded-full text-xs font-semibold",
-                      row.status === "active"
-                        ? "bg-[#FEE2E2] text-[#B91C1C]"
-                        : "bg-[#DCFCE7] text-[#166534]",
-                    )}
+            {loading && cityRows.length === 0
+              ? // Loading skeletons
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="border-b border-[#EDE9FE]">
+                    {[1, 2, 3, 4, 5].map((j) => (
+                      <td key={j} className="py-3">
+                        <div className="h-4 bg-[#F1F5F9] rounded animate-pulse" style={{ width: `${60 + j * 10}%` }} />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              : filteredRows.map((row) => (
+                  <tr
+                    key={row.city}
+                    className="border-b border-[#EDE9FE] text-[#111827] hover:bg-[#F8FAFF] transition-colors"
                   >
-                    {row.status}
-                  </span>
-                </td>
-                <td className="py-3 font-mono">{formatRupee(row.payout)}</td>
-              </tr>
-            ))}
+                    <td className="py-3 font-medium">{row.city}</td>
+                    <td className="py-3">{row.type}</td>
+                    <td className="py-3">
+                      <div className="flex items-center gap-2">
+                        <span>{row.riskScore}</span>
+                        <div className="w-16 h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
+                          <div
+                            className={cn(
+                              "h-full rounded-full",
+                              row.riskProbability > 0.7 ? "bg-[#EF4444]" :
+                              row.riskProbability > 0.4 ? "bg-[#F59E0B]" : "bg-[#10B981]"
+                            )}
+                            style={{ width: `${row.riskProbability * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3">
+                      <span
+                        className={cn(
+                          "px-2 py-1 rounded-full text-xs font-semibold",
+                          row.status === "active"
+                            ? "bg-[#FEE2E2] text-[#B91C1C]"
+                            : "bg-[#DCFCE7] text-[#166534]",
+                        )}
+                      >
+                        {row.status}
+                      </span>
+                    </td>
+                    <td className="py-3 font-mono">
+                      {row.estimatedPayout > 0 ? formatINR(row.estimatedPayout) : "—"}
+                    </td>
+                  </tr>
+                ))
+            }
           </tbody>
         </table>
       </div>

@@ -9,7 +9,7 @@ import { TrustKarmaTab } from "./TrustKarmaTab";
 import { MlInsightsTab } from "./MlInsightsTab";
 import { EarningsPlannerTab } from "./EarningsPlannerTab";
 import { cn } from "@/utils/cn";
-import { Home, CreditCard, Banknote, Star, Brain, TrendingUp } from "lucide-react";
+import { Home, CreditCard, Banknote, Brain, TrendingUp } from "lucide-react";
 
 const mobileNavItems = [
   { to: "/dashboard",          icon: Home,       label: "Home",    end: true  },

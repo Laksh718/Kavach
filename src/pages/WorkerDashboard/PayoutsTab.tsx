@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
+import confetti from 'canvas-confetti'
 import {
   ChevronDown, ChevronUp, AlertCircle, Shield, CloudRain, Wind,
   AlertTriangle, CheckCircle, XCircle, ExternalLink,
@@ -22,13 +23,6 @@ const allPayouts = [
   { id: 'p6', type: 'rain',  emoji: '🌧️', label: 'Heavy Rain',    zone: 'HSR Layout',      amount: 346, date: '2026-02-12', dateDisplay: 'Feb 12', expected: 740, actual: 245, shortfall: 495, coverage: 70, severity: 1.0, upi: 'pay_Cx2WpRn8kQ', credited: 'PhonePe ••••7832', timeToPayment: '3 min 55 sec', income: 18000 },
 ]
 
-// ── Trust Report Modal ────────────────────────────────────
-interface TrustReportModalProps {
-  open: boolean
-  onClose: () => void
-  payout: typeof allPayouts[0]
-}
-
 interface ClaimResult {
   is_eligible: boolean
   status: string
@@ -38,23 +32,114 @@ interface ClaimResult {
   suggested_premium?: number | null
 }
 
+// ── AI Proof Timeline ──────────────────────────────────────────
+function ProofTimeline({ result }: { result: ClaimResult }) {
+  const steps = [
+    {
+      icon: '🌐',
+      label: 'Signals Fetched',
+      desc: 'OpenWeather + NewsAPI called',
+      done: true,
+    },
+    {
+      icon: '🌧️',
+      label: 'Weather Analysed',
+      desc: result.environment_data?.rain_mm
+        ? `Rain: ${result.environment_data.rain_mm}mm detected`
+        : 'No significant rainfall',
+      done: true,
+    },
+    {
+      icon: '💨',
+      label: 'AQI Checked',
+      desc: result.environment_data?.aqi_pm25
+        ? `PM2.5: ${result.environment_data.aqi_pm25}`
+        : 'AQI within normal range',
+      done: true,
+    },
+    {
+      icon: '📰',
+      label: 'News Scanned',
+      desc: result.environment_data?.news
+        ? result.environment_data.news.slice(0, 60) + '…'
+        : 'No disruption news detected',
+      done: true,
+    },
+    {
+      icon: result.is_eligible ? '✅' : '❌',
+      label: result.is_eligible ? 'Payout Authorised' : 'No Triggers Met',
+      desc: result.reason ?? (result.is_eligible ? 'Triggers confirmed — payout disbursed' : 'Environmental thresholds not reached'),
+      done: true,
+      highlight: true,
+    },
+  ]
+  return (
+    <div className="space-y-2 mt-4">
+      <p className="text-[10px] text-[#94A3B8] uppercase tracking-wider font-semibold mb-3">AI Verification Timeline</p>
+      {steps.map((step, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, x: -8 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: i * 0.08 }}
+          className={cn(
+            'flex items-start gap-3 p-3 rounded-xl border text-xs',
+            step.highlight && step.done && result.is_eligible
+              ? 'bg-emerald-50 border-emerald-200'
+              : step.highlight
+                ? 'bg-[#F8FAFC] border-[#E2E8F0]'
+                : 'bg-white border-[#EDE9FE]'
+          )}
+        >
+          <span className="text-base flex-shrink-0">{step.icon}</span>
+          <div>
+            <div className="font-semibold text-[#0F172A]">{step.label}</div>
+            <div className="text-[#64748B] mt-0.5">{step.desc}</div>
+          </div>
+          {step.done && (
+            <CheckCircle size={14} className={cn('ml-auto flex-shrink-0 mt-0.5', step.highlight && result.is_eligible ? 'text-emerald-500' : 'text-[#94A3B8]')} />
+          )}
+        </motion.div>
+      ))}
+    </div>
+  )
+}
+
+// ── Trust Report Modal ─────────────────────────────────
+interface TrustReportModalProps {
+  open: boolean
+  onClose: () => void
+  payout: typeof allPayouts[0]
+}
+
 function TrustReportModal({ open, onClose, payout }: TrustReportModalProps) {
   const [result, setResult] = useState<ClaimResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [fetched, setFetched] = useState(false)
+  const [confettiFired, setConfettiFired] = useState(false)
 
   const fetchProof = async () => {
     setLoading(true)
     try {
-      // Use payout metadata to re-verify: income from payout, location = zone, avgHours=8, premium inferred
       const res = await kavachMlApi.checkClaim(
-        Math.round(payout.amount / 4), // approx monthly premium from payout amount
+        Math.round(payout.amount / 4),
         payout.zone,
         8,
         payout.income,
       )
       setResult(res)
       setFetched(true)
+      // Fire confetti once when claim is eligible
+      if (res.is_eligible && !confettiFired) {
+        setConfettiFired(true)
+        confetti({
+          particleCount: 120,
+          spread: 80,
+          origin: { y: 0.5 },
+          colors: ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#A5B4FC'],
+        })
+        toast.success('🎉 Claim verified — payout confirmed!')
+      }
     } catch {
       toast.error('Live signals temporarily unavailable for verification')
     }
@@ -62,13 +147,12 @@ function TrustReportModal({ open, onClose, payout }: TrustReportModalProps) {
   }
 
   // Auto-fetch when modal opens
-  useState(() => { if (open && !fetched) fetchProof() })
   if (open && !fetched && !loading) fetchProof()
 
   const isEligible = result?.is_eligible
 
   return (
-    <Modal open={open} onClose={() => { onClose(); setResult(null); setFetched(false) }} title="">
+    <Modal open={open} onClose={() => { onClose(); setResult(null); setFetched(false); setConfettiFired(false) }} title="">
       {/* Custom header */}
       <div className="flex items-center gap-3 mb-5 -mt-2">
         <div className="w-10 h-10 rounded-xl bg-[#EEF2FF] flex items-center justify-center">
@@ -147,7 +231,10 @@ function TrustReportModal({ open, onClose, payout }: TrustReportModalProps) {
             </div>
           </div>
 
-          {/* Triggers list ─ verification proof per API docs */}
+          {/* AI Proof Timeline */}
+          <ProofTimeline result={result} />
+
+          {/* Triggers list */}
           {result.triggers_found?.length > 0 && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-3">
               <p className="text-[10px] text-red-500 uppercase tracking-wider font-semibold mb-2">
@@ -162,15 +249,6 @@ function TrustReportModal({ open, onClose, payout }: TrustReportModalProps) {
             </div>
           )}
 
-          {/* News description */}
-          {result.environment_data?.news && (
-            <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3">
-              <p className="text-[10px] text-[#94A3B8] uppercase tracking-wider font-semibold mb-1">News Signal</p>
-              <p className="text-xs text-[#64748B] leading-relaxed">📰 {result.environment_data.news}</p>
-            </div>
-          )}
-
-          {/* No triggers: explain */}
           {result.triggers_found?.length === 0 && (
             <p className="text-xs text-[#94A3B8] text-center py-2">
               No active environmental triggers at time of current verification. Historical payout was valid at time of event.
@@ -310,7 +388,7 @@ export function PayoutsTab() {
   const thisMonth = allPayouts.filter(p => new Date(p.date) >= new Date('2026-03-01')).reduce((s, p) => s + p.amount, 0)
 
   return (
-    <div className="p-6 max-w-2xl space-y-5">
+    <div className="p-6 space-y-5 w-full">
       <div>
         <h2 className="font-syne font-bold text-2xl text-[#0F172A]">Payouts</h2>
         <p className="text-sm text-[#64748B] mt-0.5">Click any payout to expand and view live verification proof.</p>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MapContainer, TileLayer, Rectangle, Popup } from 'react-leaflet'
 import type { LatLngBoundsExpression } from 'leaflet'
 import { CITIES } from '@/constants/cities'
@@ -8,7 +8,7 @@ import { kavachMlApi } from '@/services/api/kavachMlApi'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import {
-  CloudRain, Wind, Newspaper, Activity, TrendingUp,
+  CloudRain, Newspaper, Activity, TrendingUp,
   DollarSign, AlertTriangle, CheckCircle, RefreshCw, MapPin,
 } from 'lucide-react'
 
@@ -104,6 +104,7 @@ export function ZoneMapTab() {
     mumbai: 'Mumbai',
     delhi_ncr: 'Delhi',
   }
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   const runLiveAnalysis = async () => {
     setMlLoading(true)
@@ -115,6 +116,7 @@ export function ZoneMapTab() {
       ])
       setLiveData(liveRes)
       setDisruptionData(disRes)
+      setLastUpdated(new Date())
 
       // Per API docs: if claims_management.status === 'TRIGGERED', show payout notification
       if (liveRes?.claims_management?.status === 'TRIGGERED') {
@@ -130,6 +132,12 @@ export function ZoneMapTab() {
     }
     setMlLoading(false)
   }
+
+  // Auto-run on mount and whenever the city changes
+  useEffect(() => {
+    runLiveAnalysis()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [city])
 
   const claimStatus = liveData?.claims_management?.status
   const isTriggered = claimStatus === 'TRIGGERED'
@@ -245,9 +253,14 @@ export function ZoneMapTab() {
           >
             {mlLoading
               ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg> Extracting Signals...</>
-              : <><RefreshCw size={16} /> Run Live Analysis</>
+              : <><RefreshCw size={16} /> Refresh Analysis</>
             }
           </button>
+          {lastUpdated && !mlLoading && (
+            <p className="text-[10px] text-[#94A3B8] flex items-center gap-1">
+              ✓ Last run {Math.round((Date.now() - lastUpdated.getTime()) / 60000) < 1 ? 'just now' : `${Math.round((Date.now() - lastUpdated.getTime()) / 60000)} min ago`}
+            </p>
+          )}
         </div>
 
         <AnimatePresence>
