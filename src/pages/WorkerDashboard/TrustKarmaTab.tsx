@@ -15,7 +15,7 @@ export function TrustKarmaTab() {
   const [historyPage, setHistoryPage] = useState(10)
 
   return (
-    <div className="p-6 max-w-2xl space-y-5">
+    <div className="p-6 space-y-5 w-full">
       <h2 className="font-syne font-bold text-2xl text-[#0F172A]">TrustKarma</h2>
 
       {/* Score hero */}

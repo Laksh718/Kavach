@@ -1,4 +1,4 @@
-import { useState, useRef, createRef } from "react";
+import { useState, useRef, createRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -662,6 +662,26 @@ function Step6({ onNext }: { onNext: () => void }) {
 function Step7({ onNext }: { onNext: () => void }) {
   const { tier, setTier } = usePolicyStore();
   const [howOpen, setHowOpen] = useState(false);
+  const [pricingData, setPricingData] = useState<{
+    weekly_premium: number; risk_score: number; is_safe_zone: boolean; adjustment_applied: string; coverage_hours: number
+  } | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(true);
+
+  // Fetch dynamic pricing on mount — use Bangalore_South as default zone
+  // This gives us the AI-adjusted risk multiplier to show users
+  useEffect(() => {
+    import('@/services/api/kavachMlApi').then(({ kavachMlApi }) => {
+      kavachMlApi.getDynamicPricing('Bangalore_South')
+        .then((res: { weekly_premium: number; risk_score: number; is_safe_zone: boolean; adjustment_applied: string; coverage_hours: number }) => setPricingData(res))
+        .catch(() => { /* silently fall back to static PLANS */ })
+        .finally(() => setPricingLoading(false))
+    })
+  }, [])
+
+  // Risk multiplier from API (0.8–1.3 typically)
+  const riskMultiplier = pricingData
+    ? Math.min(1.5, Math.max(0.7, pricingData.risk_score + 1))
+    : 1
 
   return (
     <div className="space-y-5">
@@ -672,10 +692,31 @@ function Step7({ onNext }: { onNext: () => void }) {
         <p className="text-[#64748B] mt-1">
           Recommended for Koramangala zone: <strong>Standard</strong>
         </p>
+        {pricingData && (
+          <div className={cn(
+            "mt-2 flex items-center gap-2 text-xs px-3 py-2 rounded-xl border font-medium",
+            pricingData.is_safe_zone
+              ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+              : pricingData.risk_score > 0.6
+                ? "bg-red-50 border-red-200 text-red-700"
+                : "bg-amber-50 border-amber-200 text-amber-700"
+          )}>
+            {pricingData.is_safe_zone ? "⚡ Safe Zone — Hyper-local discount applied" : `⚠ Zone risk: ${Math.round(pricingData.risk_score * 100)}% · price adjusted`}
+          </div>
+        )}
+        {pricingLoading && (
+          <div className="mt-2 h-8 bg-[#F1F5F9] rounded-xl animate-pulse" />
+        )}
       </div>
       <div className="space-y-3">
         {(Object.values(PLANS) as (typeof PLANS)[PlanTier][]).map((plan) => {
           const active = tier === plan.id;
+          // Apply AI risk multiplier to the base price if data is available
+          const aiPrice = pricingData
+            ? Math.round(plan.basePrice * riskMultiplier / 10) * 10
+            : plan.basePrice;
+          const priceChanged = aiPrice !== plan.basePrice;
+
           return (
             <button
               key={plan.id}
@@ -696,6 +737,11 @@ function Step7({ onNext }: { onNext: () => void }) {
                         Most Popular
                       </span>
                     )}
+                    {pricingData?.is_safe_zone && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 font-semibold">
+                        🏷 Discount
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-[#64748B]">
                     {plan.coveragePercent}% coverage · max{" "}
@@ -706,9 +752,18 @@ function Step7({ onNext }: { onNext: () => void }) {
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0 ml-4">
-                  <div className="font-syne font-bold text-2xl text-[#0F172A]">
-                    ₹{plan.basePrice}
-                  </div>
+                  {pricingLoading ? (
+                    <div className="h-7 w-14 bg-[#E2E8F0] rounded animate-pulse" />
+                  ) : (
+                    <>
+                      <div className="font-syne font-bold text-2xl text-[#0F172A]">
+                        ₹{aiPrice}
+                      </div>
+                      {priceChanged && (
+                        <div className="text-[10px] text-[#94A3B8] line-through">₹{plan.basePrice}</div>
+                      )}
+                    </>
+                  )}
                   <div className="text-xs text-[#64748B]">/week</div>
                 </div>
               </div>
@@ -734,10 +789,10 @@ function Step7({ onNext }: { onNext: () => void }) {
           animate={{ opacity: 1 }}
           className="k-card-sm bg-[#EEF2FF] text-sm text-[#4338CA]"
         >
-          Your price starts at the base rate, then we apply your zone's HLRG
-          risk score (1–10). Higher-risk zones pay slightly more; lower-risk
-          zones get a discount. The price shown is the AI-estimated average for
-          your location.
+          {pricingData?.adjustment_applied
+            ? pricingData.adjustment_applied
+            : "Your price starts at the base rate, then we apply your zone's HLRG risk score (1–10). Higher-risk zones pay slightly more; lower-risk zones get a discount. The price shown is the AI-estimated average for your location."
+          }
         </motion.div>
       )}
       <button onClick={onNext} className="btn-primary w-full">
@@ -1012,7 +1067,7 @@ export default function Onboarding() {
 
       {/* Content */}
       <main className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-md">
+        <div className="w-full">
           <AnimatePresence mode="wait">
             <motion.div
               key={step}

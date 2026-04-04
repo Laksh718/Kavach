@@ -7,17 +7,21 @@ import {
   Star,
   Settings,
   LogOut,
+  Brain,
+  TrendingUp,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/utils/cn";
 
 const navItems = [
-  { to: "/dashboard", icon: Home, label: "Home", end: true },
-  { to: "/dashboard/policy", icon: CreditCard, label: "My Policy", end: false },
-  { to: "/dashboard/payouts", icon: Banknote, label: "Payouts", end: false },
-  { to: "/dashboard/zone-map", icon: Map, label: "Zone Map", end: false },
-  { to: "/dashboard/trust-karma", icon: Star, label: "TrustKarma", end: false },
-  { to: "/dashboard/settings", icon: Settings, label: "Settings", end: false },
+  { to: "/dashboard",          icon: Home,       label: "Home",            end: true  },
+  { to: "/dashboard/policy",   icon: CreditCard, label: "My Policy",       end: false },
+  { to: "/dashboard/payouts",  icon: Banknote,   label: "Payouts",         end: false },
+  { to: "/dashboard/zone-map", icon: Map,        label: "Zone Map",        end: false },
+  { to: "/dashboard/planner",  icon: TrendingUp, label: "Earn Planner",    end: false, isNew: true, badge: "NEW" },
+  { to: "/dashboard/ai",       icon: Brain,      label: "AI Insights",     end: false, badge: "AI" },
+  { to: "/dashboard/trust-karma", icon: Star,    label: "TrustKarma",      end: false },
+  { to: "/dashboard/settings", icon: Settings,   label: "Settings",        end: false },
 ];
 
 export function Sidebar() {
@@ -33,7 +37,7 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="mt-8 flex-1 space-y-2">
-        {navItems.map(({ to, icon: Icon, label, end }) => (
+        {navItems.map(({ to, icon: Icon, label, end, isNew, badge }) => (
           <NavLink
             key={to}
             to={to}
@@ -49,6 +53,7 @@ export function Sidebar() {
           >
             <Icon size={17} />
             {label}
+            {isNew && badge && <span className="ml-auto text-[9px] font-bold bg-indigo-500 text-white px-1.5 py-0.5 rounded-full">{badge}</span>}
           </NavLink>
         ))}
       </nav>
