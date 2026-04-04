@@ -274,7 +274,7 @@ function AdminDisruptions() {
         </h2>
         <div className="flex items-center gap-2">
           <button
-            onClick={refetch}
+            onClick={() => refetch()}
             disabled={loading}
             className="w-8 h-8 rounded-full bg-[#E4E4E7] flex items-center justify-center text-[#374151] hover:bg-[#D4D4D8] transition-colors"
           >

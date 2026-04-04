@@ -17,10 +17,45 @@ const queryClient = new QueryClient({
   },
 })
 
+import { useAuthStore } from '@/store/authStore'
+import { supabase } from '@/lib/supabase'
+
+function AuthInitializer({ children }: { children: React.ReactNode }) {
+  const { setSession } = useAuthStore()
+  const [initialized, setInitialized] = React.useState(false)
+
+  React.useEffect(() => {
+    // 1. Check initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setInitialized(true)
+    })
+
+    // 2. Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [setSession])
+
+  if (!initialized) {
+    return (
+      <div className="min-h-screen bg-[#0A0E1A] flex items-center justify-center">
+        <div className="loading-spinner w-12 h-12 border-4" />
+      </div>
+    )
+  }
+
+  return <>{children}</>
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <AuthInitializer>
+        <RouterProvider router={router} />
+      </AuthInitializer>
       <Toaster
         position="top-right"
         toastOptions={{

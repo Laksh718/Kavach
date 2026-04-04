@@ -15,6 +15,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/authStore";
 import { dbService } from "@/services/db";
 import { Mail, Lock, User as UserIcon, ArrowRight, LogIn } from "lucide-react";
+import { useDynamicPricing } from "@/hooks/useKavachML";
 
 // ─── Confetti ────────────────────────────────────────────────
 const CONFETTI_COLORS = [
@@ -221,7 +222,6 @@ function Step3({ onNext }: { onNext: () => void }) {
         if (data.session) {
           setSession(data.session);
           toast.success("Welcome back! ✓");
-          onNext();
         }
       } else {
         if (!fullName.trim()) {
@@ -242,7 +242,6 @@ function Step3({ onNext }: { onNext: () => void }) {
         if (data.session) {
           setSession(data.session);
           toast.success("Account created! 🎉");
-          onNext();
         } else {
           toast.success("Check your email for confirmation!");
         }
@@ -712,21 +711,7 @@ function Step6({ onNext }: { onNext: () => void }) {
 function Step7({ onNext }: { onNext: () => void }) {
   const { tier, setTier } = usePolicyStore();
   const [howOpen, setHowOpen] = useState(false);
-  const [pricingData, setPricingData] = useState<{
-    weekly_premium: number; risk_score: number; is_safe_zone: boolean; adjustment_applied: string; coverage_hours: number
-  } | null>(null);
-  const [pricingLoading, setPricingLoading] = useState(true);
-
-  // Fetch dynamic pricing on mount — use Bangalore_South as default zone
-  // This gives us the AI-adjusted risk multiplier to show users
-  useEffect(() => {
-    import('@/services/api/kavachMlApi').then(({ kavachMlApi }) => {
-      kavachMlApi.getDynamicPricing('Bangalore_South')
-        .then((res: { weekly_premium: number; risk_score: number; is_safe_zone: boolean; adjustment_applied: string; coverage_hours: number }) => setPricingData(res))
-        .catch(() => { /* silently fall back to static PLANS */ })
-        .finally(() => setPricingLoading(false))
-    })
-  }, [])
+  const { data: pricingData, loading: pricingLoading } = useDynamicPricing('Bangalore_South');
 
   // Risk multiplier from API (0.8–1.3 typically)
   const riskMultiplier = pricingData

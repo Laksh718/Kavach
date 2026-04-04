@@ -73,33 +73,49 @@ export const dbService = {
   },
 
   async createPolicy(userId: string, tier: string, weeklyPremium: number) {
-    // 1. Check for existing active policy to avoid 409 Conflict
-    const { data: existing, error: checkError } = await supabase
-      .from('policies')
-      .select('*')
-      .eq('worker_id', userId)
-      .eq('status', 'ACTIVE')
-      .maybeSingle();
+    try {
+      // 1. Check for existing active policy to avoid 409 Conflict
+      const { data: existing, error: checkError } = await supabase
+        .from('policies')
+        .select('*')
+        .eq('worker_id', userId)
+        .eq('status', 'ACTIVE')
+        .maybeSingle();
 
-    if (checkError) throw checkError;
-    if (existing) return existing;
+      if (checkError) throw checkError;
+      if (existing) return existing;
 
-    // 2. Create new policy if none active
-    const { data, error } = await supabase
-      .from('policies')
-      .insert({
-        worker_id: userId,
-        tier: tier.toLowerCase(),
-        status: 'ACTIVE',
-        zone_id: 'Mumbai_Island_City', // Default zone for initial onboarding
-        weekly_premium: weeklyPremium,
-        valid_from: new Date().toISOString(),
-      })
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+      // 2. Create new policy if none active
+      const { data, error } = await supabase
+        .from('policies')
+        .insert({
+          worker_id: userId,
+          tier: tier.toLowerCase(),
+          status: 'ACTIVE',
+          zone_id: 'Mumbai_Island_City', // Default zone for initial onboarding
+          weekly_premium: weeklyPremium,
+          valid_from: new Date().toISOString(),
+        })
+        .select()
+        .single();
+      
+      // If error is 409 (Conflict) it means another request created it in the meantime
+      if (error && (error as any).code === '23505') {
+        const { data: retryData } = await supabase
+          .from('policies')
+          .select('*')
+          .eq('worker_id', userId)
+          .eq('status', 'ACTIVE')
+          .single();
+        if (retryData) return retryData;
+      }
+      
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      console.error('Error in createPolicy:', e);
+      throw e;
+    }
   },
 
   /**

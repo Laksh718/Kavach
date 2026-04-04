@@ -43,6 +43,5 @@ export const useAuthStore = create<AuthState>((set) => ({
 }))
 
 // Initialize auth listener
-supabase.auth.onAuthStateChange((_event, session) => {
-  useAuthStore.getState().setSession(session)
-})
+// Removed from module scope to prevent HMR loops. 
+// Now managed in src/main.tsx lifecycle.

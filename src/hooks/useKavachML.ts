@@ -1,15 +1,15 @@
 /**
  * useKavachML.ts
- * Central React hooks for Kavach-ML API with 15-minute auto-polling.
- * These wrap kavachMlApi and add caching, polling, and stale-data tracking.
+ * Central React hooks for Kavach-ML API using TanStack Query.
+ * Provides automatic caching, stale-while-revalidate, and background polling.
  */
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { kavachMlApi } from '@/services/api/kavachMlApi'
 
 // 15 minutes — matches WeatherUnion update cadence
 const POLLING_INTERVAL_MS = 15 * 60 * 1000
 
-// ── Real API response types (matching actual backend) ──────────
+// ── Types ─────────────────────────────────────────────────────
 
 export interface RunLiveResponse {
   city: string
@@ -36,16 +36,16 @@ export interface RunLiveResponse {
   }
 }
 
-export interface DisruptionResult {
-  disruption: number   // 0 or 1
-  confidence: number   // 0–1
-  message?: string | null
-}
-
 export interface EarningsResult {
   expected_earnings: number
   base_prediction: number
   deviation_factor: number
+  message?: string | null
+}
+
+export interface DisruptionResult {
+  disruption: number
+  confidence: number
   message?: string | null
 }
 
@@ -58,69 +58,50 @@ export interface PricingResult {
   adjustment_applied: string
 }
 
-// ── Hook 1: Live city data with 15-min auto-polling ───────────
+// ── Hooks ──────────────────────────────────────────────────────
 
+/**
+ * Hook 1: Live city data with 15-min auto-polling.
+ * Uses TanStack Query for caching and background updates.
+ */
 export function useRunLive(city: string) {
-  const [data, setData] = useState<RunLiveResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const { data, isLoading, error, dataUpdatedAt, refetch } = useQuery({
+    queryKey: ['ml', 'run-live', city],
+    queryFn: () => kavachMlApi.runLive(city),
+    refetchInterval: POLLING_INTERVAL_MS,
+    staleTime: POLLING_INTERVAL_MS - 1000,
+  })
 
-  const fetchData = useCallback(async () => {
-    try {
-      const res = await kavachMlApi.runLive(city)
-      setData(res)
-      setLastUpdated(new Date())
-      setError(null)
-    } catch {
-      // Keep showing stale data — show warning chip instead of error screen
-      setError('Live data unavailable — showing last known status')
-    } finally {
-      setLoading(false)
-    }
-  }, [city])
-
-  useEffect(() => {
-    setLoading(true)
-    fetchData()
-    intervalRef.current = setInterval(fetchData, POLLING_INTERVAL_MS)
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [fetchData])
-
-  return { data, loading, error, lastUpdated, refetch: fetchData }
+  return { 
+    data: data as RunLiveResponse | null, 
+    loading: isLoading, 
+    error: error ? String(error) : null, 
+    lastUpdated: dataUpdatedAt ? new Date(dataUpdatedAt) : null, 
+    refetch 
+  }
 }
 
-// ── Hook 2: Disruption prediction ─────────────────────────────
-
+/**
+ * Hook 2: Disruption prediction.
+ */
 export function useDisruptionPrediction(city: string) {
-  const [data, setData] = useState<DisruptionResult | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['ml', 'disruption', city],
+    queryFn: () => kavachMlApi.predictDisruption(city),
+    staleTime: POLLING_INTERVAL_MS,
+  })
 
-  const fetchData = useCallback(async () => {
-    try {
-      const res = await kavachMlApi.predictDisruption(city)
-      setData(res)
-    } catch {
-      // silently keep stale or null
-    } finally {
-      setLoading(false)
-    }
-  }, [city])
-
-  useEffect(() => {
-    setLoading(true)
-    fetchData()
-  }, [fetchData])
-
-  return { data, loading, refetch: fetchData }
+  return { 
+    data: data as DisruptionResult | null, 
+    loading: isLoading, 
+    refetch 
+  }
 }
 
-// ── Hook 3: Multi-city aggregation for Admin Dashboard ─────────
-
-const CITIES = [
+/**
+ * Hook 3: Multi-city aggregation for Admin Dashboard.
+ */
+const ADMIN_CITIES = [
   'Bangalore', 'Mumbai', 'Delhi', 'Chennai', 'Hyderabad',
   'Pune', 'Kolkata', 'Ahmedabad', 'Jaipur',
 ]
@@ -129,25 +110,23 @@ export interface CityLiveRow {
   city: string
   type: string
   riskProbability: number
-  riskScore: string          // "78/100"
+  riskScore: string
   status: 'active' | 'resolved'
   estimatedPayout: number
   rawData: RunLiveResponse | null
 }
 
 export function useAdminAllCities() {
-  const [cityRows, setCityRows] = useState<CityLiveRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  const fetchAll = useCallback(async () => {
-    try {
+  // Note: For simplicity on multi-city, we use a single query that Promise.all's.
+  // In a more complex app, we'd use useQueries() but this is cleaner for the current Admin Dashboard.
+  const { data, isLoading, dataUpdatedAt, refetch } = useQuery({
+    queryKey: ['ml', 'admin', 'all-cities'],
+    queryFn: async () => {
       const results = await Promise.allSettled(
-        CITIES.map((city) => kavachMlApi.runLive(city))
+        ADMIN_CITIES.map((city) => kavachMlApi.runLive(city))
       )
-
-      const rows: CityLiveRow[] = results.map((result, i) => {
+      
+      return results.map((result, i) => {
         if (result.status === 'fulfilled') {
           const d = result.value as RunLiveResponse
           const prob = d.actuarial_pricing?.risk_probability ?? 0
@@ -162,7 +141,7 @@ export function useAdminAllCities() {
                 : 'Weather'
 
           return {
-            city: d.city ?? CITIES[i],
+            city: d.city ?? ADMIN_CITIES[i],
             type: disruption,
             riskProbability: prob,
             riskScore: `${Math.round(prob * 100)}/100`,
@@ -171,52 +150,54 @@ export function useAdminAllCities() {
             rawData: d,
           }
         }
-        // API failed for this city — placeholder row
         return {
-          city: CITIES[i],
+          city: ADMIN_CITIES[i],
           type: '—',
           riskProbability: 0,
           riskScore: '—/100',
-          status: 'resolved' as const,
+          status: 'resolved',
           estimatedPayout: 0,
           rawData: null,
-        }
+        } as CityLiveRow
       })
+    },
+    refetchInterval: POLLING_INTERVAL_MS,
+    staleTime: POLLING_INTERVAL_MS - 1000,
+  })
 
-      setCityRows(rows)
-      setLastUpdated(new Date())
-    } catch {
-      // keep stale rows
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchAll()
-    intervalRef.current = setInterval(fetchAll, POLLING_INTERVAL_MS)
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [fetchAll])
-
-  return { cityRows, loading, lastUpdated, refetch: fetchAll }
+  return { 
+    cityRows: (data ?? []) as CityLiveRow[], 
+    loading: isLoading, 
+    lastUpdated: dataUpdatedAt ? new Date(dataUpdatedAt) : null, 
+    refetch 
+  }
 }
 
-// ── Hook 4: Dynamic pricing for onboarding ─────────────────────
-
+/**
+ * Hook 4: Dynamic pricing for onboarding.
+ * Caches results per cityZone to prevent redundant calls.
+ */
 export function useDynamicPricing(cityZone: string) {
-  const [data, setData] = useState<PricingResult | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading } = useQuery({
+    queryKey: ['ml', 'pricing', cityZone],
+    queryFn: () => kavachMlApi.getDynamicPricing(cityZone),
+    enabled: !!cityZone,
+    staleTime: Infinity, // Pricing doesn't change during a single onboarding session
+  })
 
-  useEffect(() => {
-    if (!cityZone) return
-    setLoading(true)
-    kavachMlApi.getDynamicPricing(cityZone)
-      .then((res) => setData(res))
-      .catch(() => { /* silently fall back to static PLANS */ })
-      .finally(() => setLoading(false))
-  }, [cityZone])
+  return { 
+    data: data as PricingResult | null, 
+    loading: isLoading 
+  }
+}
 
-  return { data, loading }
+/**
+ * Hook 5: Earnings prediction with caching.
+ */
+export function usePredictEarnings(city: string, day: number, hour: number, platform: number, workerAvg: number) {
+  return useQuery({
+    queryKey: ['ml', 'earnings', city, day, hour, platform, workerAvg],
+    queryFn: () => kavachMlApi.predictEarnings(city, day, hour, platform, workerAvg),
+    staleTime: 5 * 60 * 1000, // 5 minute cache for planner results
+  })
 }
