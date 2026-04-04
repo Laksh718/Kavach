@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kavach-ML Model - Parametric Income Protection</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar" style="display: none;">
+            <div class="sidebar-header">
+                🛡️ Kavach-ML Model
+            </div>
+            <ul class="sidebar-menu">
+                <li class="menu-item active" onclick="switchView('dashboard')">📊 Dashboard</li>
+                <li class="menu-item" onclick="switchView('policy')">📜 Policy</li>
+                <li class="menu-item" onclick="switchView('payouts')">💸 Payout History</li>
+            </ul>
+            <div class="menu-item" style="margin-top: auto; color: var(--danger);" onclick="logout()">
+                🚪 Logout
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- 1. Auth / Onboarding View -->
+            <div id="view-auth" class="view active">
+                <div style="max-width: 420px; margin: 80px auto; background: white; padding: 32px; border-radius: 16px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                    <h2 style="margin-bottom: 8px; font-weight: 600;">Welcome to Kavach-ML Model</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 24px; font-size: 0.95rem;">Onboard to get AI-powered income protection.</p>
+                    
+                    <form id="auth-form">
+                        <div class="form-group">
+                            <label>Full Name</label>
+                            <input type="text" id="name" placeholder="Ravi Kumar" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email Address</label>
+                            <input type="email" id="email" placeholder="ravi@example.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Phone Number</label>
+                            <input type="text" id="phone" placeholder="9876543210" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Location</label>
+                            <select id="location" required>
+                                <option value="Chennai">Chennai</option>
+                                <option value="Mumbai">Mumbai</option>
+                                <option value="Delhi">Delhi</option>
+                                <option value="Bangalore">Bangalore</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Daily Income Target (₹)</label>
+                            <input type="number" id="base_income" value="1000" required>
+                        </div>
+                        <button type="submit" class="btn">Onboard Worker</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 2. Dashboard View -->
+            <div id="view-dashboard" class="view">
+                <div class="header">
+                    <h1 style="font-size: 1.8rem; font-weight: 700;" id="user-greeting">Hello, Worker</h1>
+                    <p style="color: var(--text-secondary); margin-top: 4px;">Automated Parametric Cover is active.</p>
+                </div>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <h3>🛡️ Active Coverage</h3>
+                        <div class="value" id="card-coverage">₹0</div>
+                        <p class="subtext">Daily income guarantee during disruption</p>
+                    </div>
+                    <div class="card">
+                        <h3>💸 Weekly Premium</h3>
+                        <div class="value" id="card-premium">₹0</div>
+                        <p class="subtext">Calculated by AI Risk Engine</p>
+                    </div>
+                    <div class="card">
+                        <h3>🌦️ Live Sensors Sensor</h3>
+                        <div class="value" style="font-size: 1.4rem;" id="live-sensor">Scanning...</div>
+                        <p class="subtext">Polling weather stations continuously</p>
+                    </div>
+                </div>
+
+                <!-- Recent Payouts Table -->
+                <div class="table-container">
+                    <div style="padding: 16px 20px; font-weight: 600; border-bottom: 1px solid var(--border-color);">
+                        🔄 Automated Payout Logs
+                    </div>
+                    <table id="payouts-table">
+                        <thead>
+                            <tr>
+                                <th>Event</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 3. Policy View -->
+            <div id="view-policy" class="view">
+                <h1>📜 Your Policy Details</h1>
+                <div class="card-grid" style="margin-top: 24px;">
+                    <div class="card">
+                        <h3>Rain Threshold</h3>
+                        <div class="value">50mm</div>
+                        <p class="subtext">Direct payout if rainfall exceeds this</p>
+                    </div>
+                    <div class="card">
+                        <h3>AQI Threshold</h3>
+                        <div class="value">200</div>
+                        <p class="subtext">Trigger automated cover if air quality degrades</p>
+                    </div>
+                </div>
+                <button class="btn" style="width: auto; margin-top: 24px; background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe;">Modify Cover Target</button>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

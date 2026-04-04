@@ -2,32 +2,28 @@ from pydantic import BaseModel
 from typing import Optional
 
 class DisruptionRequest(BaseModel):
-    rainfall: float
-    aqi: float
-    temperature: float
+    city_name: str = "Mumbai"
 
 class DisruptionResponse(BaseModel):
     disruption: int
     confidence: float
+    message: Optional[str] = None
 
 class EarningsRequest(BaseModel):
+    city_name: str = "Mumbai"
     day_of_week: int
     hour_bucket: int
-    city: int
     platform: int
-    rainfall: float
-    aqi: float
     worker_avg: Optional[float] = 250.0
 
 class EarningsResponse(BaseModel):
     expected_earnings: float
     base_prediction: float
     deviation_factor: float
+    message: Optional[str] = None
 
 class PipelineEventRequest(BaseModel):
-    rainfall: float
-    aqi: float
-    temperature: float
+    city_name: str = "Mumbai"
     day_of_week: int
     hour_bucket: int
     city: int
