@@ -1,9 +1,10 @@
 import joblib
 import os
 
-# Setup paths relative to project root
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_DIR = os.path.join(BASE_DIR, 'models')
+# Setup paths relative to project root (works even in deployment)
+CURRENT_FILE = os.path.abspath(__file__)
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(CURRENT_FILE), "../.."))
+MODEL_DIR = os.path.join(PROJECT_ROOT, 'ml', 'models')
 
 def load_disruption_model():
     try:

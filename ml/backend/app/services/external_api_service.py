@@ -4,30 +4,67 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-WEATHERAPI_KEY = os.getenv("WEATHERAPI")
-NEWSAPI_KEY = os.getenv("NEWS_API")
-
-import os
-import requests
-from dotenv import load_dotenv
-
-load_dotenv()
-
 WINDY_KEY = os.getenv("WEATHERAPI")
 NEWSAPI_KEY = os.getenv("NEWS_API")
 
+# Hardcoded fallback for common Indian cities to bypass Nominatim rate-limits on Render
+CITY_COORDINATES_FALLBACK = {
+    "bangalore": (12.9716, 77.5946),
+    "mumbai": (19.0760, 72.8777),
+    "mumbai_island_city": (18.9220, 72.8347),
+    "delhi": (28.6139, 77.2090),
+    "chennai": (13.0827, 80.2707),
+    "kolkata": (22.5726, 88.3639),
+    "hyderabad": (17.3850, 78.4867),
+    "pune": (18.5204, 73.8567),
+    "pune_city": (18.5204, 73.8567),
+    "ahmedabad": (23.0225, 72.5714)
+}
+
 def get_city_coordinates(city: str):
     """
-    Dynamically resolves coordinates via OpenStreetMap (No hardcoding)
+    Dynamically resolves coordinates via Photon (Komoot OSM).
+    Photon is faster and less strict than Nominatim, perfect for cloud deployments.
+    Uses hardcoded fallbacks first for reliability.
     """
+    # Normalize input
+    city_key = city.lower().strip().replace(" ", "_")
+    
+    # 1. Check Hardcoded Fallback First (Zero-Touch Production Stability)
+    if city_key in CITY_COORDINATES_FALLBACK:
+        return CITY_COORDINATES_FALLBACK[city_key]
+
+    # 2. Dynamic Fetch via Photon (Fast, No-Auth, Cloud-Friendly)
     try:
-        url = f"https://nominatim.openstreetmap.org/search?q={city}&format=json&limit=1"
-        headers = {'User-Agent': 'KavachML-Production/1.0'}
-        response = requests.get(url, headers=headers).json()
-        if response:
-            return float(response[0]['lat']), float(response[0]['lon'])
+        url = "https://photon.komoot.io/api/"
+        params = {"q": city, "limit": 1}
+        
+        # Photon returns GeoJSON
+        response = requests.get(url, params=params, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data and "features" in data and len(data["features"]) > 0:
+                coords = data["features"][0]["geometry"]["coordinates"]
+                # Photon returns [lon, lat]
+                return float(coords[1]), float(coords[0])
+                
     except Exception as e:
-        print(f"❌ Geocoding Error for {city}: {e}")
+        print(f"❌ Geocoding Exception for {city}: {e}")
+    
+    # Final Fallback to Nominatim (only if Photon fails)
+    try:
+        url = "https://nominatim.openstreetmap.org/search"
+        params = {"q": city, "format": "json", "limit": 1}
+        headers = {'User-Agent': 'KavachML-Production/1.1 (Hackathon; contact: support@kavach.ml)'}
+        response = requests.get(url, params=params, headers=headers, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            if data and isinstance(data, list) and len(data) > 0:
+                return float(data[0]['lat']), float(data[0]['lon'])
+    except:
+        pass
+        
     return None, None
 
 def get_live_weather_and_aqi(city: str):
@@ -50,12 +87,17 @@ def get_live_weather_and_aqi(city: str):
             "key": WINDY_KEY
         }
         
-        response = requests.post(url, json=payload)
-        data = response.json()
+        response = requests.post(url, json=payload, timeout=15)
         
         if response.status_code != 200:
-            print(f"❌ Windy API Error: {data}")
+            try:
+                error_data = response.json()
+                print(f"❌ Windy API Error ({response.status_code}): {error_data}")
+            except:
+                print(f"❌ Windy API Non-JSON Error ({response.status_code}): {response.text[:100]}")
             return None
+            
+        data = response.json()
             
         # Extract the latest surface data (average over the first few hours)
         # Windy returns arrays for each timestamp
