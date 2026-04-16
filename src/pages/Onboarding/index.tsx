@@ -489,42 +489,44 @@ function Step5({ onNext }: { onNext: () => void }) {
         {PLATFORMS.map((p) => {
           const sel = selected.includes(p.id);
           return (
-            <div key={p.id}>
-              <button
-                onClick={() => toggle(p.id)}
-                className={cn(
-                  "w-full k-card-sm flex items-center gap-3 transition-all interactive border-2",
-                  sel ? "border-[#6366F1] bg-indigo-50" : "border-transparent",
-                )}
-              >
-                <span className="text-2xl">{p.icon}</span>
-                <div className="flex-1 text-left">
-                  <div className="font-semibold text-[#0F172A] text-sm">
-                    {p.label}
+            <div
+              key={p.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => toggle(p.id)}
+              onKeyDown={(e) => e.key === "Enter" && toggle(p.id)}
+              className={cn(
+                "w-full k-card-sm flex items-center gap-3 transition-all interactive border-2 cursor-pointer outline-none focus:ring-2 focus:ring-[#6366F1]/20",
+                sel ? "border-[#6366F1] bg-indigo-50" : "border-transparent",
+              )}
+            >
+              <span className="text-2xl">{p.icon}</span>
+              <div className="flex-1 text-left">
+                <div className="font-semibold text-[#0F172A] text-sm">
+                  {p.label}
+                </div>
+              </div>
+              {sel && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenGuide(openGuide === p.id ? null : p.id);
+                    }}
+                    className="text-xs text-[#6366F1] flex items-center gap-0.5 hover:underline"
+                  >
+                    Earnings guide{" "}
+                    {openGuide === p.id ? (
+                      <ChevronUp size={12} />
+                    ) : (
+                      <ChevronDown size={12} />
+                    )}
+                  </button>
+                  <div className="w-5 h-5 bg-[#6366F1] rounded-full flex items-center justify-center">
+                    <Check size={12} className="text-white" />
                   </div>
                 </div>
-                {sel && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOpenGuide(openGuide === p.id ? null : p.id);
-                      }}
-                      className="text-xs text-[#6366F1] flex items-center gap-0.5"
-                    >
-                      Earnings guide{" "}
-                      {openGuide === p.id ? (
-                        <ChevronUp size={12} />
-                      ) : (
-                        <ChevronDown size={12} />
-                      )}
-                    </button>
-                    <div className="w-5 h-5 bg-[#6366F1] rounded-full flex items-center justify-center">
-                      <Check size={12} className="text-white" />
-                    </div>
-                  </div>
-                )}
-              </button>
+              )}
               {sel && openGuide === p.id && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
