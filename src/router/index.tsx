@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 // Lazy imports for code splitting
 const Landing = lazy(() => import('@/pages/Landing'))
 const Onboarding = lazy(() => import('@/pages/Onboarding'))
+const Login = lazy(() => import('@/pages/Auth/Login'))
 const WorkerDashboard = lazy(() => import('@/pages/WorkerDashboard'))
 const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'))
 const InsurerPortal = lazy(() => import('@/pages/InsurerPortal'))
@@ -32,7 +33,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuthStore()
 
   if (isLoading) return <PageLoader />
-  if (!isAuthenticated) return <Navigate to="/onboard" replace />
+  if (!isAuthenticated) return <Navigate to="/login" replace />
 
   return <>{children}</>
 }
@@ -47,8 +48,16 @@ export const router = createBrowserRouter([
     element: withSuspense(Onboarding),
   },
   {
+    path: '/signup',
+    element: withSuspense(Onboarding),
+  },
+  {
     path: '/onboarding',
-    element: <Navigate to="/onboard" replace />,
+    element: <Navigate to="/signup" replace />,
+  },
+  {
+    path: '/login',
+    element: withSuspense(Login),
   },
   {
     path: '/dashboard/*',

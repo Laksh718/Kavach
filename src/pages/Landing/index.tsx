@@ -122,7 +122,7 @@ function HeroSection() {
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-4">
               <Link
-                to="/onboard"
+                to="/signup"
                 className="btn-kavach-primary px-8 py-4 text-lg font-semibold text-center rounded-2xl"
               >
                 Start Protection — ₹350/week
@@ -321,7 +321,7 @@ function PricingSection() {
                   </div>
 
                   <Link
-                    to="/onboard"
+                    to="/signup"
                     className={`w-full block text-center py-3 rounded-xl font-semibold transition-all ${
                       isPopular
                         ? "btn-kavach-primary"
@@ -586,13 +586,13 @@ export default function Landing() {
           </div>
           <div className="flex items-center gap-3">
             <Link
-              to="/onboard"
+              to="/login"
               className="text-gray-300 text-sm font-dm hover:text-white"
             >
               Login
             </Link>
             <Link
-              to="/onboard"
+              to="/signup"
               className="btn-kavach-primary px-5 py-2.5 text-sm rounded-xl"
             >
               Get started

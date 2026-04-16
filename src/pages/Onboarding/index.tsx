@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { ChevronLeft, Check, ChevronDown, ChevronUp } from "lucide-react";
@@ -193,12 +193,11 @@ function Step2({ onNext }: { onNext: () => void }) {
   );
 }
 
-// ─── Step 3: Account Creation (Email/Pass) ─────────────────────
-function Step3({ onNext }: { onNext: () => void }) {
+// ─── Step 3: Account Creation (Signup) ─────────────────────
+function SignupStep({ onNext }: { onNext: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [isLogin, setIsLogin] = useState(false);
   const [loading, setLoading] = useState(false);
   const { setSession, isAuthenticated } = useAuthStore();
 
@@ -213,38 +212,26 @@ function Step3({ onNext }: { onNext: () => void }) {
     setLoading(true);
 
     try {
-      if (isLogin) {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-        if (data.session) {
-          setSession(data.session);
-          toast.success("Welcome back! ✓");
-        }
-      } else {
-        if (!fullName.trim()) {
-          toast.error("Please enter your full name");
-          setLoading(false);
-          return;
-        }
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: fullName,
-            },
+      if (!fullName.trim()) {
+        toast.error("Please enter your full name");
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
           },
-        });
-        if (error) throw error;
-        if (data.session) {
-          setSession(data.session);
-          toast.success("Account created! 🎉");
-        } else {
-          toast.success("Check your email for confirmation!");
-        }
+        },
+      });
+      if (error) throw error;
+      if (data.session) {
+        setSession(data.session);
+        toast.success("Account created! 🎉");
+      } else {
+        toast.success("Check your email for confirmation!");
       }
     } catch (error: any) {
       toast.error(error.message || "Authentication failed");
@@ -257,31 +244,27 @@ function Step3({ onNext }: { onNext: () => void }) {
     <div className="space-y-6">
       <div className="text-center sm:text-left">
         <h2 className="font-syne font-bold text-3xl text-[#0F172A]">
-          {isLogin ? "Welcome back" : "Create your account"}
+          Create your account
         </h2>
         <p className="text-[#64748B] mt-1">
-          {isLogin 
-            ? "Login to manage your KAVACH protection" 
-            : "Join the most trusted platform for gig workers"}
+          Join the most trusted platform for gig workers
         </p>
       </div>
 
       <form onSubmit={handleAuth} className="space-y-4">
-        {!isLogin && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-[#64748B] flex items-center gap-2">
-              <UserIcon size={16} /> Full Name
-            </label>
-            <input
-              required
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Enter your full name"
-              className="k-input"
-            />
-          </div>
-        )}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-[#64748B] flex items-center gap-2">
+            <UserIcon size={16} /> Full Name
+          </label>
+          <input
+            required
+            type="text"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="Enter your full name"
+            className="k-input"
+          />
+        </div>
 
         <div className="space-y-2">
           <label className="text-sm font-medium text-[#64748B] flex items-center gap-2">
@@ -319,10 +302,6 @@ function Step3({ onNext }: { onNext: () => void }) {
         >
           {loading ? (
             <span className="spinner-white w-5 h-5" />
-          ) : isLogin ? (
-            <>
-              Login <LogIn size={20} />
-            </>
           ) : (
             <>
               Create Account <ArrowRight size={20} />
@@ -332,14 +311,9 @@ function Step3({ onNext }: { onNext: () => void }) {
       </form>
 
       <div className="text-center">
-        <button
-          onClick={() => setIsLogin(!isLogin)}
-          className="text-sm text-[#6366F1] font-medium hover:underline"
-        >
-          {isLogin 
-            ? "New to KAVACH? Create an account" 
-            : "Already have an account? Login here"}
-        </button>
+        <Link to="/login" className="text-sm text-[#6366F1] font-medium hover:underline">
+          Already have an account? Login here
+        </Link>
       </div>
     </div>
   );
@@ -1042,7 +1016,7 @@ function Step9() {
 
 // ─── Wizard Shell ─────────────────────────────────────────────
 const STEPS = [
-  "Verify Number",
+  "Create Account",
   "Language",
   "Why KAVACH",
   "eKYC",
@@ -1063,7 +1037,7 @@ export default function Onboarding() {
   };
 
   const stepComponents: Record<number, React.ReactNode> = {
-    0: <Step3 onNext={next} />,
+    0: <SignupStep onNext={next} />,
     1: <Step1 onNext={next} />,
     2: <Step2 onNext={next} />,
     3: <Step4 onNext={next} />,
