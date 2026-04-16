@@ -227,6 +227,10 @@ function SignupStep({ onNext }: { onNext: () => void }) {
         },
       });
       if (error) throw error;
+      if (data.user) {
+        await dbService.createInitialProfile(data.user.id, fullName);
+      }
+      
       if (data.session) {
         setSession(data.session);
         toast.success("Account created! 🎉");

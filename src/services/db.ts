@@ -38,6 +38,25 @@ export const dbService = {
     return data;
   },
 
+  async createInitialProfile(userId: string, fullName: string) {
+    const { data, error } = await supabase
+      .from('worker_profiles')
+      .upsert({
+        id: userId,
+        full_name: fullName,
+        trust_karma_score: 800,
+        kyc_status: 'PENDING'
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error in createInitialProfile:', error);
+      throw error;
+    }
+    return data;
+  },
+
   async updateProfile(userId: string, updates: Partial<Worker>) {
     // Map frontend camelCase to DB snake_case
     const dbUpdates: any = { ...updates };
@@ -46,15 +65,42 @@ export const dbService = {
       delete dbUpdates.kycStatus;
     }
 
-    const { data, error } = await supabase
+    // 1. First attempt to update existing row
+    const { data: updated, error: updateError } = await supabase
       .from('worker_profiles')
-      .update(dbUpdates)
+      .update({
+        ...dbUpdates,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', userId)
       .select()
+      .maybeSingle();
+
+    if (updateError) throw updateError;
+    if (updated) return updated;
+
+    // 2. If no row updated, it might be missing. Try to fetch Name from Auth
+    const { data: { user } } = await supabase.auth.getUser();
+    const fullName = user?.user_metadata?.full_name || 'Kavach User';
+
+    // 3. Perform a robust upsert including the mandatory name
+    const { data: upserted, error: upsertError } = await supabase
+      .from('worker_profiles')
+      .upsert({
+        id: userId,
+        full_name: fullName,
+        trust_karma_score: 800,
+        ...dbUpdates,
+        updated_at: new Date().toISOString()
+      })
+      .select()
       .single();
-    
-    if (error) throw error;
-    return data;
+
+    if (upsertError) {
+      console.error('Error in robust updateProfile:', upsertError);
+      throw upsertError;
+    }
+    return upserted;
   },
 
   /**
@@ -92,15 +138,15 @@ export const dbService = {
           worker_id: userId,
           tier: tier.toLowerCase(),
           status: 'ACTIVE',
-          zone_id: 'Mumbai_Island_City', // Default zone for initial onboarding
+          zone_id: 'Bangalore_South', // Corrected default zone ID
           weekly_premium: weeklyPremium,
           valid_from: new Date().toISOString(),
         })
         .select()
         .single();
       
-      // If error is 409 (Conflict) it means another request created it in the meantime
-      if (error && (error as any).code === '23505') {
+      // If error is 409 (Conflict/Duplicate) it means another request created it in the meantime
+      if (error && (error.code === '23505' || error.code === '409')) {
         const { data: retryData } = await supabase
           .from('policies')
           .select('*')
