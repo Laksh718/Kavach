@@ -8,12 +8,13 @@ const kavachMlClient = axios.create({
 });
 
 export const kavachMlApi = {
+  // Health check hits the root endpoint (GET /) — /health does not exist
   checkHealth: async (): Promise<boolean> => {
-    console.log('%c[Kavach-ML] GET /health', 'color:#6366f1;font-weight:bold');
+    console.log('%c[Kavach-ML] GET / (health)', 'color:#6366f1;font-weight:bold');
     try {
-      const res = await kavachMlClient.get('/health', { timeout: 8000 });
+      const res = await kavachMlClient.get('/', { timeout: 8000 });
       const ok = res.status >= 200 && res.status < 300;
-      console.log('%c[Kavach-ML] ← /health', ok ? 'color:#10b981;font-weight:bold' : 'color:#ef4444;font-weight:bold', res.data);
+      console.log('%c[Kavach-ML] ← / (health)', ok ? 'color:#10b981;font-weight:bold' : 'color:#ef4444;font-weight:bold', res.data);
       return ok;
     } catch (e) {
       console.warn('[Kavach-ML] Health check failed', e);
@@ -29,25 +30,26 @@ export const kavachMlApi = {
     return res.data;
   },
 
+  // Note: API uses hyphens, not underscores
   getDynamicPricing: async (city: string) => {
-    console.log(`%c[Kavach-ML] GET /insurance/dynamic_pricing/${city}`, 'color:#6366f1;font-weight:bold');
-    const res = await kavachMlClient.get(`/insurance/dynamic_pricing/${city}`);
-    console.log('%c[Kavach-ML] ← /insurance/dynamic_pricing response', 'color:#10b981;font-weight:bold', res.data);
+    console.log(`%c[Kavach-ML] GET /insurance/dynamic-pricing/${city}`, 'color:#6366f1;font-weight:bold');
+    const res = await kavachMlClient.get(`/insurance/dynamic-pricing/${city}`);
+    console.log('%c[Kavach-ML] ← /insurance/dynamic-pricing response', 'color:#10b981;font-weight:bold', res.data);
     return res.data;
   },
 
   checkClaim: async (premium_amt_per_month: number, location: string, avg_hours: number, income: number) => {
     const payload = { premium_amt_per_month, location, avg_hours, income };
-    console.log('%c[Kavach-ML] POST /insurance/insurance_claim', 'color:#6366f1;font-weight:bold', payload);
-    const res = await kavachMlClient.post('/insurance/insurance_claim', payload);
-    console.log('%c[Kavach-ML] ← /insurance/insurance_claim response', 'color:#10b981;font-weight:bold', res.data);
+    console.log('%c[Kavach-ML] POST /insurance/insurance-claim', 'color:#6366f1;font-weight:bold', payload);
+    const res = await kavachMlClient.post('/insurance/insurance-claim', payload);
+    console.log('%c[Kavach-ML] ← /insurance/insurance-claim response', 'color:#10b981;font-weight:bold', res.data);
     return res.data;
   },
 
   runLive: async (city: string) => {
-    console.log(`%c[Kavach-ML] GET /run_live/${city}`, 'color:#6366f1;font-weight:bold');
-    const res = await kavachMlClient.get(`/run_live/${city}`);
-    console.log('%c[Kavach-ML] ← /run_live response', 'color:#10b981;font-weight:bold', res.data);
+    console.log(`%c[Kavach-ML] GET /run-live/${city}`, 'color:#6366f1;font-weight:bold');
+    const res = await kavachMlClient.get(`/run-live/${city}`);
+    console.log('%c[Kavach-ML] ← /run-live response', 'color:#10b981;font-weight:bold', res.data);
     return res.data;
   },
 
