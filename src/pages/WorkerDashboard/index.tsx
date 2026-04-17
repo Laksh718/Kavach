@@ -8,8 +8,9 @@ import { ZoneMapTab } from "./ZoneMapTab";
 import { TrustKarmaTab } from "./TrustKarmaTab";
 import { MlInsightsTab } from "./MlInsightsTab";
 import { EarningsPlannerTab } from "./EarningsPlannerTab";
+import { SettingsTab } from "./SettingsTab";
 import { cn } from "@/utils/cn";
-import { Home, CreditCard, Banknote, Brain, TrendingUp } from "lucide-react";
+import { Home, CreditCard, Banknote, TrendingUp, Settings } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 
 const mobileNavItems = [
@@ -17,7 +18,7 @@ const mobileNavItems = [
   { to: "/dashboard/policy",   icon: CreditCard, label: "Policy",  end: false },
   { to: "/dashboard/payouts",  icon: Banknote,   label: "Payouts", end: false },
   { to: "/dashboard/planner",  icon: TrendingUp, label: "Planner", end: false },
-  { to: "/dashboard/ai",       icon: Brain,      label: "AI",      end: false },
+  { to: "/dashboard/settings", icon: Settings,   label: "Profile", end: false },
 ];
 
 export default function WorkerDashboard() {
@@ -74,20 +75,7 @@ export default function WorkerDashboard() {
                 <Route path="trust-karma" element={<TrustKarmaTab />} />
                 <Route path="ai" element={<MlInsightsTab />} />
                 <Route path="planner" element={<EarningsPlannerTab />} />
-                <Route
-                  path="settings"
-                  element={
-                    <div className="p-6">
-                      <h2 className="font-syne font-bold text-2xl text-[#111827] mb-4">
-                        Settings
-                      </h2>
-                      <div className="k-card p-5 text-[#64748B]">
-                        Language, notifications and account settings coming
-                        soon.
-                      </div>
-                    </div>
-                  }
-                />
+                <Route path="settings" element={<SettingsTab />} />
               </Routes>
             </main>
           </div>
