@@ -75,12 +75,17 @@ export function Sidebar() {
           </div>
           <button
             onClick={async () => {
-              await logout();
-              navigate("/");
+              try {
+                await logout();
+                navigate("/");
+              } catch (e) {
+                console.error("Logout failed", e);
+              }
             }}
-            className="text-[#64748B] hover:text-[#0F172A] transition-colors"
+            className="text-[#64748B] hover:text-[#EF4444] transition-colors p-2 rounded-xl bg-white hover:bg-red-50 border border-slate-100"
+            title="Log Out"
           >
-            <LogOut size={15} />
+            <LogOut size={16} />
           </button>
         </div>
       </div>
