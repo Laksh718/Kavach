@@ -102,7 +102,7 @@ function PauseModal({ open, onClose, activePolicy, refetch }: { open: boolean; o
 function LiveAlertBanner({
   liveData, lastUpdated, loading, error, onRefresh,
 }: {
-  liveData: RunLiveResponse | null;
+  liveData: RunLiveResponse | null | undefined;
   lastUpdated: Date | null;
   loading: boolean;
   error: string | null;

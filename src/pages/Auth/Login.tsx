@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { Mail, Lock, LogIn, ChevronLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
