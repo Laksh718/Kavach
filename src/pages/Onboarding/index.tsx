@@ -14,7 +14,7 @@ import type { PlanTier } from "@/types/worker.types";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/authStore";
 import { dbService } from "@/services/db";
-import { Mail, Lock, User as UserIcon, ArrowRight, LogIn } from "lucide-react";
+import { Mail, Lock, User as UserIcon, ArrowRight } from "lucide-react";
 import { useDynamicPricing } from "@/hooks/useKavachML";
 
 // ─── Confetti ────────────────────────────────────────────────
