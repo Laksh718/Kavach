@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { TrendingUp, MapPin, Clock } from 'lucide-react'
+import { TrendingUp, MapPin, Clock, RefreshCw } from 'lucide-react'
 import { usePredictEarnings } from '@/hooks/useKavachML'
 import { formatRupee } from '@/utils/formatRupee'
 import { cn } from '@/utils/cn'
@@ -100,7 +100,7 @@ export function EarningsPlannerTab() {
   const [platform, setPlatform] = useState(0)
   const [workerAvg, setWorkerAvg] = useState(250)
 
-  const { data: result, isLoading: loading } = usePredictEarnings(city, day, hour, platform, workerAvg)
+  const { data: result, isLoading: loading, refetch } = usePredictEarnings(city, day, hour, platform, workerAvg)
 
   const deviationPct = result ? Math.abs((result.deviation_factor - 1) * 100).toFixed(1) : null
   const deviationPos = result ? result.deviation_factor >= 1 : true
@@ -197,6 +197,18 @@ export function EarningsPlannerTab() {
             ) : result ? (
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="k-card">
                 <div className="bg-[#EEF2FF] border border-[#C7D2FE] rounded-2xl p-5 mb-4 text-center">
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <span className="text-xs font-semibold text-[#6366F1] tracking-wide uppercase">Prediction Model</span>
+                    <button
+                      onClick={() => refetch()}
+                      disabled={loading}
+                      title="Refresh prediction"
+                      className="flex items-center gap-1.5 text-xs text-[#6366F1] hover:text-[#4F46E5] bg-[#EEF2FF] hover:bg-[#E0E7FF] border border-[#C7D2FE] rounded-lg px-3 py-1.5 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+                      Refresh
+                    </button>
+                  </div>
                   <p className="text-xs text-[#6366F1] font-medium mb-1">Predicted Earnings</p>
                   <p className="font-mono font-bold text-5xl text-[#1E1B4B]">{formatRupee(result.expected_earnings)}</p>
                   {peakInfo && <p className="text-[10px] text-[#6366F1] mt-2 font-bold uppercase tracking-widest">⚡ {peakInfo.label}</p>}

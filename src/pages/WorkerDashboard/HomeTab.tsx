@@ -202,7 +202,14 @@ function LiveAlertBanner({
 }
 
 // ── Zone Safety Widget ────────────────────────────────────────
-function ZoneSafetyWidget({ liveData, lastUpdated }: { liveData: RunLiveResponse | null; lastUpdated: Date | null }) {
+function ZoneSafetyWidget({
+  liveData, lastUpdated, loading, onRefresh,
+}: {
+  liveData: RunLiveResponse | undefined;
+  lastUpdated: Date | null;
+  loading: boolean;
+  onRefresh: () => void;
+}) {
   const navigate = useNavigate();
   const prob = liveData?.actuarial_pricing?.risk_probability ?? null;
   const shields = prob !== null ? riskToShields(prob) : 3;
@@ -217,13 +224,29 @@ function ZoneSafetyWidget({ liveData, lastUpdated }: { liveData: RunLiveResponse
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="k-card">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-syne font-bold text-[#0F172A] text-sm">Zone Safety</h3>
-        <button onClick={() => navigate("/dashboard/zone-map")} className="text-xs text-[#6366F1] flex items-center gap-0.5">
-          Full map <ChevronRight size={12} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onRefresh}
+            disabled={loading}
+            title="Refresh live data"
+            className="flex items-center gap-1 text-xs text-[#6366F1] hover:text-[#4F46E5] disabled:opacity-40"
+          >
+            <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+            {loading ? "Loading…" : "Refresh"}
+          </button>
+          <button onClick={() => navigate("/dashboard/zone-map")} className="text-xs text-[#6366F1] flex items-center gap-0.5">
+            Map <ChevronRight size={12} />
+          </button>
+        </div>
       </div>
       <p className="text-xs text-[#64748B] mb-2">Koramangala, Bengaluru</p>
 
-      {liveData ? (
+      {loading && !liveData ? (
+        <div className="animate-pulse space-y-2">
+          <div className="flex gap-1">{[1,2,3,4,5].map(i => <div key={i} className="w-6 h-6 rounded-full bg-gray-200" />)}</div>
+          <div className="h-4 w-24 bg-gray-200 rounded" />
+        </div>
+      ) : liveData ? (
         <>
           <div className="flex items-center gap-1 mb-2">
             {[1, 2, 3, 4, 5].map((i) => (
@@ -238,9 +261,14 @@ function ZoneSafetyWidget({ liveData, lastUpdated }: { liveData: RunLiveResponse
           </div>
         </>
       ) : (
-        <div className="animate-pulse space-y-2">
-          <div className="flex gap-1">{[1,2,3,4,5].map(i => <div key={i} className="w-6 h-6 rounded-full bg-gray-200" />)}</div>
-          <div className="h-4 w-24 bg-gray-200 rounded" />
+        <div className="py-3 text-center">
+          <div className="text-[#94A3B8] text-xs mb-2">Live safety data not loaded yet</div>
+          <button
+            onClick={onRefresh}
+            className="text-xs text-[#6366F1] font-medium underline-offset-2 underline"
+          >
+            Load now
+          </button>
         </div>
       )}
     </motion.div>
@@ -463,7 +491,7 @@ export function HomeTab() {
         {/* RIGHT: Zone safety (LIVE) + 72hr forecast + Statistics */}
         <div className="space-y-4">
           {/* LIVE Zone Safety */}
-          <ZoneSafetyWidget liveData={liveData} lastUpdated={lastUpdated} />
+          <ZoneSafetyWidget liveData={liveData} lastUpdated={lastUpdated} loading={liveLoading} onRefresh={refetch} />
 
           {/* 72-Hour Forecast Strip */}
           <ForecastStrip city="Bangalore" />

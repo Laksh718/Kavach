@@ -8,6 +8,19 @@ const kavachMlClient = axios.create({
 });
 
 export const kavachMlApi = {
+  checkHealth: async (): Promise<boolean> => {
+    console.log('%c[Kavach-ML] GET /health', 'color:#6366f1;font-weight:bold');
+    try {
+      const res = await kavachMlClient.get('/health', { timeout: 8000 });
+      const ok = res.status >= 200 && res.status < 300;
+      console.log('%c[Kavach-ML] ← /health', ok ? 'color:#10b981;font-weight:bold' : 'color:#ef4444;font-weight:bold', res.data);
+      return ok;
+    } catch (e) {
+      console.warn('[Kavach-ML] Health check failed', e);
+      return false;
+    }
+  },
+
   predictEarnings: async (city_name: string, day_of_week: number, hour_bucket: number, platform: number = 1, worker_avg: number = 500) => {
     const payload = { city_name, day_of_week, hour_bucket, platform, worker_avg };
     console.log('%c[Kavach-ML] POST /predict/earnings', 'color:#6366f1;font-weight:bold', payload);

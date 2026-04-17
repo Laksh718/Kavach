@@ -1,15 +1,21 @@
 /**
  * useKavachML.ts
- * Central React hooks for Kavach-ML API using TanStack Query.
- * Provides automatic caching, stale-while-revalidate, and background polling.
+ *
+ * Behaviour:
+ *  1. On every fetch, /health is checked first. If unhealthy, the query throws
+ *     and no main API call is made.
+ *  2. Each hook fetches ONCE per page load (first mount / empty cache).
+ *     staleTime: Infinity means cached data is never considered stale, so React
+ *     Query never triggers a background refetch.
+ *  3. No auto-polling (refetchInterval: false), no window-focus refetch, no
+ *     reconnect refetch.
+ *  4. Manual refresh is exposed as `refetch()` — this bypasses the cache and
+ *     runs the health-check → API call flow again.
  */
 import { useQuery } from '@tanstack/react-query'
 import { kavachMlApi } from '@/services/api/kavachMlApi'
 
-// 15 minutes — matches WeatherUnion update cadence
-const POLLING_INTERVAL_MS = 15 * 60 * 1000
-
-// ── Types ─────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────
 
 export interface RunLiveResponse {
   city: string
@@ -58,49 +64,58 @@ export interface PricingResult {
   adjustment_applied: string
 }
 
-// ── Hooks ──────────────────────────────────────────────────────
+// ── Shared query config — once-per-load, no auto-refetch ───────
+const ONCE_PER_LOAD = {
+  staleTime: Infinity,       // cached data never goes stale → no background refetch
+  refetchInterval: false as const,
+  refetchOnWindowFocus: false,
+  refetchOnMount: true,      // fetch on first mount (no cache); skip if cache exists
+  refetchOnReconnect: false,
+  retry: 1,
+}
 
-/**
- * Hook 1: Live city data with 15-min auto-polling.
- * Uses TanStack Query for caching and background updates.
- */
+// ── Hook 1: Live city data ─────────────────────────────────────
 export function useRunLive(city: string) {
   const { data, isLoading, error, dataUpdatedAt, refetch } = useQuery({
     queryKey: ['ml', 'run-live', city],
-    queryFn: () => kavachMlApi.runLive(city),
-    refetchInterval: POLLING_INTERVAL_MS,
-    staleTime: POLLING_INTERVAL_MS - 1000,
+    queryFn: async () => {
+      const healthy = await kavachMlApi.checkHealth()
+      if (!healthy) throw new Error('API Health Check Failed — server may be starting up')
+      return kavachMlApi.runLive(city)
+    },
+    ...ONCE_PER_LOAD,
   })
 
-  return { 
-    data: data as RunLiveResponse | null, 
-    loading: isLoading, 
-    error: error ? String(error) : null, 
-    lastUpdated: dataUpdatedAt ? new Date(dataUpdatedAt) : null, 
-    refetch 
+  return {
+    data: data as RunLiveResponse | undefined,
+    loading: isLoading,
+    error: error ? (error as Error).message : null,
+    lastUpdated: dataUpdatedAt ? new Date(dataUpdatedAt) : null,
+    refetch,
   }
 }
 
-/**
- * Hook 2: Disruption prediction.
- */
+// ── Hook 2: Disruption prediction ─────────────────────────────
 export function useDisruptionPrediction(city: string) {
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['ml', 'disruption', city],
-    queryFn: () => kavachMlApi.predictDisruption(city),
-    staleTime: POLLING_INTERVAL_MS,
+    queryFn: async () => {
+      const healthy = await kavachMlApi.checkHealth()
+      if (!healthy) throw new Error('API Health Check Failed')
+      return kavachMlApi.predictDisruption(city)
+    },
+    ...ONCE_PER_LOAD,
   })
 
-  return { 
-    data: data as DisruptionResult | null, 
-    loading: isLoading, 
-    refetch 
+  return {
+    data: data as DisruptionResult | undefined,
+    loading: isLoading,
+    error: error ? (error as Error).message : null,
+    refetch,
   }
 }
 
-/**
- * Hook 3: Multi-city aggregation for Admin Dashboard.
- */
+// ── Hook 3: Multi-city aggregation for Admin Dashboard ─────────
 const ADMIN_CITIES = [
   'Bangalore', 'Mumbai', 'Delhi', 'Chennai', 'Hyderabad',
   'Pune', 'Kolkata', 'Ahmedabad', 'Jaipur',
@@ -117,15 +132,16 @@ export interface CityLiveRow {
 }
 
 export function useAdminAllCities() {
-  // Note: For simplicity on multi-city, we use a single query that Promise.all's.
-  // In a more complex app, we'd use useQueries() but this is cleaner for the current Admin Dashboard.
   const { data, isLoading, dataUpdatedAt, refetch } = useQuery({
     queryKey: ['ml', 'admin', 'all-cities'],
     queryFn: async () => {
+      const healthy = await kavachMlApi.checkHealth()
+      if (!healthy) throw new Error('API Health Check Failed')
+
       const results = await Promise.allSettled(
         ADMIN_CITIES.map((city) => kavachMlApi.runLive(city))
       )
-      
+
       return results.map((result, i) => {
         if (result.status === 'fulfilled') {
           const d = result.value as RunLiveResponse
@@ -139,13 +155,12 @@ export function useAdminAllCities() {
               : d.parametric_signals?.news?.news_trigger
                 ? 'Event'
                 : 'Weather'
-
           return {
             city: d.city ?? ADMIN_CITIES[i],
             type: disruption,
             riskProbability: prob,
             riskScore: `${Math.round(prob * 100)}/100`,
-            status: isActive ? 'active' : 'resolved',
+            status: isActive ? 'active' as const : 'resolved' as const,
             estimatedPayout: d.claims_management?.payout_inr ?? 0,
             rawData: d,
           }
@@ -155,49 +170,57 @@ export function useAdminAllCities() {
           type: '—',
           riskProbability: 0,
           riskScore: '—/100',
-          status: 'resolved',
+          status: 'resolved' as const,
           estimatedPayout: 0,
           rawData: null,
-        } as CityLiveRow
+        }
       })
     },
-    refetchInterval: POLLING_INTERVAL_MS,
-    staleTime: POLLING_INTERVAL_MS - 1000,
+    ...ONCE_PER_LOAD,
   })
 
-  return { 
-    cityRows: (data ?? []) as CityLiveRow[], 
-    loading: isLoading, 
-    lastUpdated: dataUpdatedAt ? new Date(dataUpdatedAt) : null, 
-    refetch 
+  return {
+    cityRows: (data ?? []) as CityLiveRow[],
+    loading: isLoading,
+    lastUpdated: dataUpdatedAt ? new Date(dataUpdatedAt) : null,
+    refetch,
   }
 }
 
-/**
- * Hook 4: Dynamic pricing for onboarding.
- * Caches results per cityZone to prevent redundant calls.
- */
+// ── Hook 4: Dynamic pricing for onboarding ─────────────────────
 export function useDynamicPricing(cityZone: string) {
   const { data, isLoading } = useQuery({
     queryKey: ['ml', 'pricing', cityZone],
-    queryFn: () => kavachMlApi.getDynamicPricing(cityZone),
+    queryFn: async () => {
+      const healthy = await kavachMlApi.checkHealth()
+      if (!healthy) throw new Error('API Health Check Failed')
+      return kavachMlApi.getDynamicPricing(cityZone)
+    },
     enabled: !!cityZone,
-    staleTime: Infinity, // Pricing doesn't change during a single onboarding session
+    ...ONCE_PER_LOAD,
   })
 
-  return { 
-    data: data as PricingResult | null, 
-    loading: isLoading 
+  return {
+    data: data as PricingResult | undefined,
+    loading: isLoading,
   }
 }
 
-/**
- * Hook 5: Earnings prediction with caching.
- */
-export function usePredictEarnings(city: string, day: number, hour: number, platform: number, workerAvg: number) {
+// ── Hook 5: Earnings prediction ────────────────────────────────
+export function usePredictEarnings(
+  city: string,
+  day: number,
+  hour: number,
+  platform: number,
+  workerAvg: number,
+) {
   return useQuery({
     queryKey: ['ml', 'earnings', city, day, hour, platform, workerAvg],
-    queryFn: () => kavachMlApi.predictEarnings(city, day, hour, platform, workerAvg),
-    staleTime: 5 * 60 * 1000, // 5 minute cache for planner results
+    queryFn: async () => {
+      const healthy = await kavachMlApi.checkHealth()
+      if (!healthy) throw new Error('API Health Check Failed')
+      return kavachMlApi.predictEarnings(city, day, hour, platform, workerAvg)
+    },
+    ...ONCE_PER_LOAD,
   })
 }
