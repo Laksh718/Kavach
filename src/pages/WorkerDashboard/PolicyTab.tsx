@@ -4,12 +4,14 @@ import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { Shield, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Download, Zap, Clock, Sparkles } from 'lucide-react'
 import { Modal } from '@/components/shared/Modal'
-import { usePolicyStore } from '@/store/policyStore'
 import { PLANS } from '@/constants/plans'
 import { formatRupee } from '@/utils/formatRupee'
 import { cn } from '@/utils/cn'
 import type { PlanTier } from '@/types/worker.types'
 import { kavachMlApi } from '@/services/api/kavachMlApi'
+import { useActivePolicy } from '@/hooks/useDatabase'
+import { useAuthStore } from '@/store/authStore'
+import { supabase } from '@/lib/supabase'
 
 const coverageItems = [
   { label: 'Rain trigger',  detail: 'Zone-calibrated threshold (10mm/hr)', covered: true },
@@ -146,7 +148,15 @@ function SmartCheckoutBanner({ basePlanPrice }: { basePlanPrice: number }) {
 
 export function PolicyTab() {
   const navigate = useNavigate()
-  const { tier, status, weeklyPremium, pausesUsedThisYear, pause, cancel, setTier } = usePolicyStore()
+  const { user } = useAuthStore()
+  const { data: activePolicy, refetch } = useActivePolicy()
+  
+  const tier = (activePolicy?.tier || 'standard') as PlanTier
+  const status = activePolicy?.status || 'inactive'
+  const weeklyPremium = activePolicy?.weekly_premium || 0
+  const pausesUsedThisYear = activePolicy?.pauses_used || 0
+  const nextRenewal = activePolicy?.next_renewal ? new Date(activePolicy.next_renewal).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : '—'
+
   const plan = PLANS[tier]
 
   const [coverageOpen, setCoverageOpen] = useState(false)
@@ -158,26 +168,42 @@ export function PolicyTab() {
   const [loading, setLoading] = useState(false)
 
   const handlePlanSwitch = async () => {
-    if (!switchModal) return
+    if (!switchModal || !user || !activePolicy) return
     setLoading(true)
-    await new Promise(r => setTimeout(r, 1000))
-    setTier(switchModal.target)
-    setSwitchModal(null)
+    try {
+      await supabase.from('policies').update({ tier: switchModal.target }).eq('id', activePolicy.id)
+      await refetch()
+      setSwitchModal(null)
+      toast.success(`Plan updated to ${PLANS[switchModal.target].label} ✓`)
+    } catch (e) {
+      toast.error('Failed to switch plan')
+    }
     setLoading(false)
-    toast.success(`Plan updated to ${PLANS[switchModal.target].label} ✓`)
   }
 
-  const handlePause = () => {
-    pause()
-    toast.success(`Policy paused for ${pauseWeeks} week${pauseWeeks > 1 ? 's' : ''}`)
-    setPauseModal(false)
+  const handlePause = async () => {
+    if (!user || !activePolicy) return
+    try {
+      await supabase.from('policies').update({ status: 'paused', pauses_used: pausesUsedThisYear + 1 }).eq('id', activePolicy.id)
+      await refetch()
+      toast.success(`Policy paused for ${pauseWeeks} week${pauseWeeks > 1 ? 's' : ''}`)
+      setPauseModal(false)
+    } catch (e) {
+      toast.error('Failed to pause policy')
+    }
   }
 
-  const handleCancel = () => {
-    cancel()
-    toast(`Policy cancelled. Redirecting...`, { icon: '⚠️' })
-    setCancelModal(false)
-    setTimeout(() => navigate('/onboard'), 1500)
+  const handleCancel = async () => {
+    if (!user || !activePolicy) return
+    try {
+      await supabase.from('policies').update({ status: 'lapsed' }).eq('id', activePolicy.id)
+      await refetch()
+      toast(`Policy cancelled. Redirecting...`, { icon: '⚠️' })
+      setCancelModal(false)
+      setTimeout(() => navigate('/onboard'), 1500)
+    } catch (e) {
+      toast.error('Failed to cancel policy')
+    }
   }
 
   const handleConsent = (id: string, val: boolean, required: boolean) => {
@@ -242,33 +268,42 @@ export function PolicyTab() {
       <h2 className="font-syne font-bold text-2xl text-[#0F172A]">My Policy</h2>
 
       {/* Active plan card */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="k-card-hero">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="badge-blue mb-3">{plan.label} Plan</div>
-            <div className="font-syne font-bold text-3xl text-[#1E1B4B]">{formatRupee(weeklyPremium)}<span className="text-base font-dm font-normal text-indigo-600">/week</span></div>
-          </div>
-          <Shield size={36} className="text-[#1E1B4B]" />
-        </div>
-        <div className="grid grid-cols-3 gap-4 mt-4">
-          {[
-            { l: 'Coverage',    v: `${plan.coveragePercent}%` },
-            { l: 'Max weekly',  v: formatRupee(plan.maxWeeklyPayout) },
-            { l: 'Next renewal',v: 'Mar 23' },
-          ].map(({ l, v }) => (
-            <div key={l}>
-              <div className="text-[#4338CA] text-xs">{l}</div>
-              <div className="font-mono font-semibold text-[#1E1B4B] text-sm">{v}</div>
+      {activePolicy ? (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="k-card-hero">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="badge-blue mb-3">{plan.label} Plan</div>
+              <div className="font-syne font-bold text-3xl text-[#1E1B4B]">{formatRupee(weeklyPremium)}<span className="text-base font-dm font-normal text-indigo-600">/week</span></div>
             </div>
-          ))}
-        </div>
-        <div className="mt-3">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[#10B981]" />
-            <span className="text-sm text-[#065F46] font-medium capitalize">{status}</span>
+            <Shield size={36} className="text-[#1E1B4B]" />
           </div>
+          <div className="grid grid-cols-3 gap-4 mt-4">
+            {[
+              { l: 'Coverage',    v: `${plan.coveragePercent}%` },
+              { l: 'Max weekly',  v: formatRupee(plan.maxWeeklyPayout) },
+              { l: 'Next renewal',v: nextRenewal },
+            ].map(({ l, v }) => (
+              <div key={l}>
+                <div className="text-[#4338CA] text-xs">{l}</div>
+                <div className="font-mono font-semibold text-[#1E1B4B] text-sm">{v}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3">
+            <div className="flex items-center gap-2">
+              <div className={cn("w-2 h-2 rounded-full", status === 'active' ? "bg-[#10B981]" : "bg-amber-400")} />
+              <span className="text-sm font-medium capitalize" style={{ color: status === 'active' ? '#065F46' : '#B45309' }}>{status}</span>
+            </div>
+          </div>
+        </motion.div>
+      ) : (
+        <div className="k-card-hero bg-indigo-50 border-dashed border-2 flex flex-col items-center justify-center py-10">
+          <Shield size={48} className="text-indigo-300 mb-3" />
+          <p className="text-indigo-900 font-syne font-bold">No Active Policy</p>
+          <p className="text-indigo-600 text-sm mb-4">You are currently unprotected.</p>
+          <button onClick={() => navigate('/onboard')} className="btn-primary px-8">Get Protected Now</button>
         </div>
-      </motion.div>
+      )}
 
       {/* ── Smart Checkout AI Banner ── LIVE API */}
       <SmartCheckoutBanner basePlanPrice={plan.basePrice} />

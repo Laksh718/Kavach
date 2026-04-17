@@ -7,29 +7,11 @@ import {
   TrendingUp, Clock, MapPin, Sparkles, Info, ArrowUpRight,
 } from 'lucide-react'
 import { kavachMlApi } from '@/services/api/kavachMlApi'
+import { useDisruptionPrediction, useDynamicPricing, type EarningsResult } from '@/hooks/useKavachML'
 import { formatRupee } from '@/utils/formatRupee'
 import { cn } from '@/utils/cn'
 
 // ─── Types ───────────────────────────────────────────────
-interface EarningsResult {
-  expected_earnings: number
-  base_prediction: number
-  deviation_factor: number
-  message?: string | null
-}
-interface DisruptionResult {
-  disruption: number
-  confidence: number
-  message?: string | null
-}
-interface PricingResult {
-  city: string
-  weekly_premium: number
-  coverage_hours: number
-  risk_score: number
-  is_safe_zone: boolean
-  adjustment_applied: string
-}
 interface ClaimResult {
   is_eligible: boolean
   status: string
@@ -303,29 +285,18 @@ function EarningsPredictor() {
 // ─── Disruption Predictor ────────────────────────────────
 function DisruptionPredictor() {
   const [city, setCity] = useState('Mumbai')
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<DisruptionResult | null>(null)
+  const { data: result, loading, refetch } = useDisruptionPrediction(city)
   const [signalLost, setSignalLost] = useState(false)
 
   const handlePredict = async () => {
     if (!city.trim()) { toast.error('Enter a city name'); return }
-    setLoading(true); setSignalLost(false)
+    setSignalLost(false)
     try {
-      const res = await kavachMlApi.predictDisruption(city)
-      setResult(res)
-      if (res.disruption === 1) {
-        toast(`⚠️ High probability of route-wide disruptions in ${city}. Stay safe!`, { duration: 5000 })
-      } else {
-        toast.success(`Low disruption risk in ${city}`)
-      }
+      await refetch()
+      toast.success(`Scanned ${city}`)
     } catch (err: any) {
-      if (err?.response?.status >= 500 || !err?.response) {
-        setSignalLost(true)
-      } else {
-        toast.error('Prediction failed')
-      }
+      setSignalLost(true)
     }
-    setLoading(false)
   }
 
   const confidence = result ? Math.round(result.confidence * 100) : 0
@@ -412,25 +383,12 @@ function DisruptionPredictor() {
 // ─── Dynamic Pricing ──────────────────────────────────────
 function DynamicPricingWidget() {
   const [city, setCity] = useState('Mumbai_Island_City')
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<PricingResult | null>(null)
+  const { data: result, loading } = useDynamicPricing(city)
   const [signalLost, setSignalLost] = useState(false)
 
   const handleFetch = async () => {
     if (!city.trim()) { toast.error('Enter a city/zone name'); return }
-    setLoading(true); setSignalLost(false)
-    try {
-      const res = await kavachMlApi.getDynamicPricing(city)
-      setResult(res)
-      toast.success(`Pricing for ${res.city} loaded!`)
-    } catch (err: any) {
-      if (err?.response?.status >= 500 || !err?.response) {
-        setSignalLost(true)
-      } else {
-        toast.error('Failed to fetch pricing — try a hyper-local key like Mumbai_Island_City')
-      }
-    }
-    setLoading(false)
+    setSignalLost(false)
   }
 
   const riskLevel = result ? (result.risk_score > 0.6 ? 'HIGH' : result.risk_score > 0.3 ? 'MEDIUM' : 'LOW') : null

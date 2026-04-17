@@ -1,5 +1,5 @@
-import { useState, useRef, createRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { ChevronLeft, Check, ChevronDown, ChevronUp } from "lucide-react";
@@ -11,6 +11,11 @@ import i18n from "@/i18n";
 import { cn } from "@/utils/cn";
 import { formatRupee } from "@/utils/formatRupee";
 import type { PlanTier } from "@/types/worker.types";
+import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/store/authStore";
+import { dbService } from "@/services/db";
+import { Mail, Lock, User as UserIcon, ArrowRight, LogIn } from "lucide-react";
+import { useDynamicPricing } from "@/hooks/useKavachML";
 
 // ─── Confetti ────────────────────────────────────────────────
 const CONFETTI_COLORS = [
@@ -188,128 +193,132 @@ function Step2({ onNext }: { onNext: () => void }) {
   );
 }
 
-// ─── Step 3: OTP ───────────────────────────────────────────────
-function Step3({ onNext }: { onNext: () => void }) {
-  const [phone, setPhone] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState(["", "", "", ""]);
-  const shakeRefs = useRef(
-    Array.from({ length: 4 }, () => createRef<HTMLInputElement>()),
-  );
-  const [shake, setShake] = useState(false);
+// ─── Step 3: Account Creation (Signup) ─────────────────────
+function SignupStep({ onNext }: { onNext: () => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const { setSession, isAuthenticated } = useAuthStore();
 
-  const sendOtp = async () => {
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setLoading(false);
-    setOtpSent(true);
-    toast.success(`OTP sent to +91 ${phone.slice(0, 5)}XXXXX`);
-  };
-
-  const handleOtpChange = (idx: number, val: string) => {
-    const digit = val.replace(/\D/g, "").slice(0, 1);
-    const next = [...otp];
-    next[idx] = digit;
-    setOtp(next);
-    if (digit && idx < 3) shakeRefs.current[idx + 1]?.current?.focus();
-
-    const full = next.join("");
-    if (full.length === 4) {
-      if (/^\d{4}$/.test(full)) {
-        setTimeout(onNext, 300);
-        toast.success("OTP verified ✓");
-      } else {
-        setShake(true);
-        setTimeout(() => setShake(false), 500);
-      }
+  useEffect(() => {
+    if (isAuthenticated) {
+      onNext();
     }
-  };
+  }, [isAuthenticated, onNext]);
 
-  const handleOtpKeyDown = (idx: number, e: React.KeyboardEvent) => {
-    if (e.key === "Backspace" && !otp[idx] && idx > 0)
-      shakeRefs.current[idx - 1]?.current?.focus();
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      if (!fullName.trim()) {
+        toast.error("Please enter your full name");
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
+        },
+      });
+      if (error) throw error;
+      if (data.user) {
+        await dbService.createInitialProfile(data.user.id, fullName);
+      }
+      
+      if (data.session) {
+        setSession(data.session);
+        toast.success("Account created! 🎉");
+      } else {
+        toast.success("Check your email for confirmation!");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Authentication failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="text-center sm:text-left">
         <h2 className="font-syne font-bold text-3xl text-[#0F172A]">
-          Verify your number
+          Create your account
         </h2>
         <p className="text-[#64748B] mt-1">
-          We'll send a one-time password by SMS
+          Join the most trusted platform for gig workers
         </p>
       </div>
-      {!otpSent ? (
-        <>
-          <div>
-            <label className="text-sm font-medium text-[#64748B] block mb-2">
-              Mobile number
-            </label>
-            <div className="flex gap-2">
-              <div
-                className="k-card-sm px-4 py-3 text-[#0F172A] font-mono text-sm flex-shrink-0"
-                style={{ borderRadius: 12 }}
-              >
-                +91
-              </div>
-              <input
-                value={phone}
-                onChange={(e) =>
-                  setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
-                }
-                placeholder="9876543210"
-                className="k-input"
-                maxLength={10}
-              />
-            </div>
-          </div>
-          <button
-            onClick={sendOtp}
-            className="btn-primary w-full flex items-center justify-center gap-2"
-            disabled={phone.length !== 10 || loading}
-          >
-            {loading && <span className="spinner-white w-4 h-4" />} Send OTP
-          </button>
-        </>
-      ) : (
-        <div className="space-y-5">
-          <p className="text-sm text-[#64748B]">
-            Enter the 4-digit code sent to{" "}
-            <strong>+91 {phone.slice(0, 5)}·····</strong>
-          </p>
-          <div className={cn("flex gap-3 justify-center", shake && "shake")}>
-            {otp.map((d, i) => (
-              <input
-                key={i}
-                ref={shakeRefs.current[i]}
-                type="number"
-                value={d}
-                onChange={(e) => handleOtpChange(i, e.target.value)}
-                onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                className="w-14 h-14 text-center text-2xl font-mono font-bold border-2 rounded-2xl outline-none focus:border-[#6366F1] bg-[#F1F5F9] text-[#0F172A] transition-colors"
-                style={{ borderColor: d ? "#6366F1" : "#E2E8F0" }}
-                onClick={() => shakeRefs.current[i]?.current?.select()}
-              />
-            ))}
-          </div>
-          <div className="text-center">
-            <span className="text-sm text-[#94A3B8] bg-[#EEF2FF] px-3 py-1 rounded-full">
-              💡 Demo mode — enter any 4-digit code (e.g. 1234)
-            </span>
-          </div>
-          <button
-            onClick={() => {
-              setOtp(["", "", "", ""]);
-              toast.success("OTP resent!");
-            }}
-            className="text-sm text-[#6366F1] w-full text-center"
-          >
-            Resend OTP
-          </button>
+
+      <form onSubmit={handleAuth} className="space-y-4">
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-[#64748B] flex items-center gap-2">
+            <UserIcon size={16} /> Full Name
+          </label>
+          <input
+            required
+            type="text"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="Enter your full name"
+            className="k-input"
+          />
         </div>
-      )}
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-[#64748B] flex items-center gap-2">
+            <Mail size={16} /> Email Address
+          </label>
+          <input
+            required
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="worker@example.com"
+            className="k-input"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-[#64748B] flex items-center gap-2">
+            <Lock size={16} /> Password
+          </label>
+          <input
+            required
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            className="k-input"
+            minLength={6}
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="btn-primary w-full flex items-center justify-center gap-2 py-4"
+        >
+          {loading ? (
+            <span className="spinner-white w-5 h-5" />
+          ) : (
+            <>
+              Create Account <ArrowRight size={20} />
+            </>
+          )}
+        </button>
+      </form>
+
+      <div className="text-center">
+        <Link to="/login" className="text-sm text-[#6366F1] font-medium hover:underline">
+          Already have an account? Login here
+        </Link>
+      </div>
     </div>
   );
 }
@@ -337,12 +346,20 @@ function Step4({ onNext }: { onNext: () => void }) {
     }, 1500);
   };
 
+  const { user } = useAuthStore();
   const handleVerify = async () => {
+    if (!user) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 2000));
-    setLoading(false);
-    toast.success("Identity verified ✓");
-    onNext();
+    try {
+      await dbService.updateProfile(user.id, { kycStatus: "verified" });
+      setLoading(false);
+      toast.success("Identity verified ✓");
+      onNext();
+    } catch (e) {
+      console.error(e);
+      toast.error("Error updating profile");
+      setLoading(false);
+    }
   };
 
   return (
@@ -472,42 +489,44 @@ function Step5({ onNext }: { onNext: () => void }) {
         {PLATFORMS.map((p) => {
           const sel = selected.includes(p.id);
           return (
-            <div key={p.id}>
-              <button
-                onClick={() => toggle(p.id)}
-                className={cn(
-                  "w-full k-card-sm flex items-center gap-3 transition-all interactive border-2",
-                  sel ? "border-[#6366F1] bg-indigo-50" : "border-transparent",
-                )}
-              >
-                <span className="text-2xl">{p.icon}</span>
-                <div className="flex-1 text-left">
-                  <div className="font-semibold text-[#0F172A] text-sm">
-                    {p.label}
+            <div
+              key={p.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => toggle(p.id)}
+              onKeyDown={(e) => e.key === "Enter" && toggle(p.id)}
+              className={cn(
+                "w-full k-card-sm flex items-center gap-3 transition-all interactive border-2 cursor-pointer outline-none focus:ring-2 focus:ring-[#6366F1]/20",
+                sel ? "border-[#6366F1] bg-indigo-50" : "border-transparent",
+              )}
+            >
+              <span className="text-2xl">{p.icon}</span>
+              <div className="flex-1 text-left">
+                <div className="font-semibold text-[#0F172A] text-sm">
+                  {p.label}
+                </div>
+              </div>
+              {sel && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenGuide(openGuide === p.id ? null : p.id);
+                    }}
+                    className="text-xs text-[#6366F1] flex items-center gap-0.5 hover:underline"
+                  >
+                    Earnings guide{" "}
+                    {openGuide === p.id ? (
+                      <ChevronUp size={12} />
+                    ) : (
+                      <ChevronDown size={12} />
+                    )}
+                  </button>
+                  <div className="w-5 h-5 bg-[#6366F1] rounded-full flex items-center justify-center">
+                    <Check size={12} className="text-white" />
                   </div>
                 </div>
-                {sel && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOpenGuide(openGuide === p.id ? null : p.id);
-                      }}
-                      className="text-xs text-[#6366F1] flex items-center gap-0.5"
-                    >
-                      Earnings guide{" "}
-                      {openGuide === p.id ? (
-                        <ChevronUp size={12} />
-                      ) : (
-                        <ChevronDown size={12} />
-                      )}
-                    </button>
-                    <div className="w-5 h-5 bg-[#6366F1] rounded-full flex items-center justify-center">
-                      <Check size={12} className="text-white" />
-                    </div>
-                  </div>
-                )}
-              </button>
+              )}
               {sel && openGuide === p.id && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
@@ -522,7 +541,17 @@ function Step5({ onNext }: { onNext: () => void }) {
         })}
       </div>
       <button
-        onClick={onNext}
+        onClick={async () => {
+          const { user } = useAuthStore.getState();
+          if (user) {
+            try {
+              await dbService.updateProfile(user.id, { platforms: selected as any });
+            } catch (e) {
+              console.error(e);
+            }
+          }
+          onNext();
+        }}
         className="btn-primary w-full"
         disabled={selected.length === 0}
       >
@@ -662,21 +691,7 @@ function Step6({ onNext }: { onNext: () => void }) {
 function Step7({ onNext }: { onNext: () => void }) {
   const { tier, setTier } = usePolicyStore();
   const [howOpen, setHowOpen] = useState(false);
-  const [pricingData, setPricingData] = useState<{
-    weekly_premium: number; risk_score: number; is_safe_zone: boolean; adjustment_applied: string; coverage_hours: number
-  } | null>(null);
-  const [pricingLoading, setPricingLoading] = useState(true);
-
-  // Fetch dynamic pricing on mount — use Bangalore_South as default zone
-  // This gives us the AI-adjusted risk multiplier to show users
-  useEffect(() => {
-    import('@/services/api/kavachMlApi').then(({ kavachMlApi }) => {
-      kavachMlApi.getDynamicPricing('Bangalore_South')
-        .then((res: { weekly_premium: number; risk_score: number; is_safe_zone: boolean; adjustment_applied: string; coverage_hours: number }) => setPricingData(res))
-        .catch(() => { /* silently fall back to static PLANS */ })
-        .finally(() => setPricingLoading(false))
-    })
-  }, [])
+  const { data: pricingData, loading: pricingLoading } = useDynamicPricing('Bangalore_South');
 
   // Risk multiplier from API (0.8–1.3 typically)
   const riskMultiplier = pricingData
@@ -829,11 +844,22 @@ function Step8({ onNext }: { onNext: () => void }) {
   >({});
 
   const handleUpi = async (id: string) => {
+    const { user } = useAuthStore.getState();
+    if (!user) return;
+
     setStatus((s) => ({ ...s, [id]: "loading" }));
-    await new Promise((r) => setTimeout(r, 1500));
-    setStatus((s) => ({ ...s, [id]: "done" }));
-    toast.success("AutoPay mandate created ✓");
-    setTimeout(onNext, 600);
+    try {
+      await Promise.all([
+        dbService.recordAutoPayMandate(user.id, id),
+        dbService.createPolicy(user.id, tier, weeklyPremium)
+      ]);
+      setStatus((s) => ({ ...s, [id]: "done" }));
+      toast.success("AutoPay mandate created ✓");
+      setTimeout(onNext, 600);
+    } catch (e) {
+      toast.error("Error setting up AutoPay");
+      setStatus((s) => ({ ...s, [id]: "idle" }));
+    }
   };
 
   return (
@@ -996,9 +1022,9 @@ function Step9() {
 
 // ─── Wizard Shell ─────────────────────────────────────────────
 const STEPS = [
+  "Create Account",
   "Language",
   "Why KAVACH",
-  "Verify Number",
   "eKYC",
   "Platforms",
   "AA Consent",
@@ -1017,9 +1043,9 @@ export default function Onboarding() {
   };
 
   const stepComponents: Record<number, React.ReactNode> = {
-    0: <Step1 onNext={next} />,
-    1: <Step2 onNext={next} />,
-    2: <Step3 onNext={next} />,
+    0: <SignupStep onNext={next} />,
+    1: <Step1 onNext={next} />,
+    2: <Step2 onNext={next} />,
     3: <Step4 onNext={next} />,
     4: <Step5 onNext={next} />,
     5: <Step6 onNext={next} />,

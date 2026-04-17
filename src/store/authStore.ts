@@ -1,32 +1,47 @@
 import { create } from 'zustand'
 import type { Worker } from '@/types/worker.types'
+import { supabase } from '@/lib/supabase'
+import type { Session, User } from '@supabase/supabase-js'
 
 interface AuthState {
+  user: User | null
   worker: Worker | null
-  token: string | null
+  session: Session | null
   isAuthenticated: boolean
   isLoading: boolean
 
-  login: (token: string, worker: Worker) => void
-  logout: () => void
+  setSession: (session: Session | null) => void
+  setWorker: (worker: Worker | null) => void
+  logout: () => Promise<void>
   setLoading: (loading: boolean) => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
+  user: null,
   worker: null,
-  token: localStorage.getItem('kavach_token'),
-  isAuthenticated: !!localStorage.getItem('kavach_token'),
-  isLoading: false,
+  session: null,
+  isAuthenticated: false,
+  isLoading: true,
 
-  login: (token, worker) => {
-    localStorage.setItem('kavach_token', token)
-    set({ token, worker, isAuthenticated: true })
+  setSession: (session) => {
+    set({ 
+      session, 
+      user: session?.user ?? null, 
+      isAuthenticated: !!session,
+      isLoading: false 
+    })
   },
 
-  logout: () => {
-    localStorage.removeItem('kavach_token')
-    set({ token: null, worker: null, isAuthenticated: false })
+  setWorker: (worker) => set({ worker }),
+
+  logout: async () => {
+    await supabase.auth.signOut()
+    set({ session: null, user: null, worker: null, isAuthenticated: false })
   },
 
   setLoading: (isLoading) => set({ isLoading }),
 }))
+
+// Initialize auth listener
+// Removed from module scope to prevent HMR loops. 
+// Now managed in src/main.tsx lifecycle.

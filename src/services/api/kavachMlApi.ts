@@ -17,24 +17,24 @@ export const kavachMlApi = {
   },
 
   getDynamicPricing: async (city: string) => {
-    console.log(`%c[Kavach-ML] GET /insurance/dynamic-pricing/${city}`, 'color:#6366f1;font-weight:bold');
-    const res = await kavachMlClient.get(`/insurance/dynamic-pricing/${city}`);
-    console.log('%c[Kavach-ML] ← /insurance/dynamic-pricing response', 'color:#10b981;font-weight:bold', res.data);
+    console.log(`%c[Kavach-ML] GET /insurance/dynamic_pricing/${city}`, 'color:#6366f1;font-weight:bold');
+    const res = await kavachMlClient.get(`/insurance/dynamic_pricing/${city}`);
+    console.log('%c[Kavach-ML] ← /insurance/dynamic_pricing response', 'color:#10b981;font-weight:bold', res.data);
     return res.data;
   },
 
   checkClaim: async (premium_amt_per_month: number, location: string, avg_hours: number, income: number) => {
     const payload = { premium_amt_per_month, location, avg_hours, income };
-    console.log('%c[Kavach-ML] POST /insurance/insurance-claim', 'color:#6366f1;font-weight:bold', payload);
-    const res = await kavachMlClient.post('/insurance/insurance-claim', payload);
-    console.log('%c[Kavach-ML] ← /insurance/insurance-claim response', 'color:#10b981;font-weight:bold', res.data);
+    console.log('%c[Kavach-ML] POST /insurance/insurance_claim', 'color:#6366f1;font-weight:bold', payload);
+    const res = await kavachMlClient.post('/insurance/insurance_claim', payload);
+    console.log('%c[Kavach-ML] ← /insurance/insurance_claim response', 'color:#10b981;font-weight:bold', res.data);
     return res.data;
   },
 
   runLive: async (city: string) => {
-    console.log(`%c[Kavach-ML] GET /run-live/${city}`, 'color:#6366f1;font-weight:bold');
-    const res = await kavachMlClient.get(`/run-live/${city}`);
-    console.log('%c[Kavach-ML] ← /run-live response', 'color:#10b981;font-weight:bold', res.data);
+    console.log(`%c[Kavach-ML] GET /run_live/${city}`, 'color:#6366f1;font-weight:bold');
+    const res = await kavachMlClient.get(`/run_live/${city}`);
+    console.log('%c[Kavach-ML] ← /run_live response', 'color:#10b981;font-weight:bold', res.data);
     return res.data;
   },
 

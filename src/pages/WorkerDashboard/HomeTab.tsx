@@ -12,10 +12,11 @@ import {
 import { RupeeCounter } from "@/components/shared/RupeeCounter";
 import { Modal } from "@/components/shared/Modal";
 import { SmartShiftPicker } from "@/components/shared/SmartShiftPicker";
-import { usePolicyStore } from "@/store/policyStore";
+import { useRunLive, useDisruptionPrediction, type RunLiveResponse } from "@/hooks/useKavachML";
+import { useProfile, useActivePolicy, usePayouts } from "@/hooks/useDatabase";
 import { formatRupee, formatINR, riskToShields, minutesAgo } from "@/utils/formatRupee";
 import { cn } from "@/utils/cn";
-import { useRunLive, useDisruptionPrediction, type RunLiveResponse } from "@/hooks/useKavachML";
+import { supabase } from "@/lib/supabase";
 
 // ── Static fallback data ──────────────────────────────────────
 const weeklyData = [
@@ -38,11 +39,6 @@ const platformCards = [
   { id: "zomato", label: "Zomato", icon: "🍕", weekEarnings: 1680, lastEarning: 290, lastDay: "Thu" },
   { id: "zepto",  label: "Zepto",  icon: "⚡", weekEarnings: 840,  lastEarning: 180, lastDay: "Wed" },
 ];
-const recentPayouts = [
-  { icon: "🌧️", label: "Heavy Rain Payout",     amount: 364, date: "Mar 19, 04:31 AM", positive: true },
-  { icon: "😷", label: "AQI Severe Payout",      amount: 210, date: "Mar 11, 02:15 PM", positive: true },
-  { icon: "🛡️", label: "Policy Renewed (Week 4)", amount: 65,  date: "Mar 17, 09:00 AM", positive: false },
-];
 
 
 
@@ -63,14 +59,22 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
 }
 
 // ── Pause Modal ───────────────────────────────────────────────
-function PauseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function PauseModal({ open, onClose, activePolicy, refetch }: { open: boolean; onClose: () => void; activePolicy: any; refetch: any }) {
   const [selected, setSelected] = useState<1 | 2>(1);
-  const { pause, pausesUsedThisYear } = usePolicyStore();
-  const remaining = 2 - pausesUsedThisYear;
-  const handlePause = () => {
-    pause();
-    toast.success(`Policy paused for ${selected} week${selected > 1 ? "s" : ""}`);
-    onClose();
+  const [loading, setLoading] = useState(false);
+  const remaining = 2 - (activePolicy?.pauses_used || 0);
+  const handlePause = async () => {
+    if (!activePolicy) return;
+    setLoading(true);
+    try {
+      await supabase.from("policies").update({ status: "paused", pauses_used: (activePolicy.pauses_used || 0) + 1 }).eq("id", activePolicy.id);
+      await refetch();
+      toast.success(`Policy paused for ${selected} week${selected > 1 ? "s" : ""}`);
+      onClose();
+    } catch (e) {
+      toast.error("Failed to pause policy");
+    }
+    setLoading(false);
   };
   return (
     <Modal open={open} onClose={onClose} title="Pause Policy">
@@ -85,7 +89,8 @@ function PauseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
           </button>
         ))}
       </div>
-      <button onClick={handlePause} className="btn-primary w-full" disabled={remaining === 0}>
+      <button onClick={handlePause} className="btn-primary w-full" disabled={remaining === 0 || loading}>
+        {loading && <span className="spinner-white w-4 h-4 mr-2" />}
         Pause for {selected} week{selected > 1 ? "s" : ""}
       </button>
       {remaining === 0 && <p className="text-xs text-red-500 text-center mt-2">No pauses remaining this year.</p>}
@@ -295,8 +300,15 @@ export function HomeTab() {
   const [chartPeriod, setChartPeriod] = useState<"weekly" | "monthly">("weekly");
   const [pauseOpen, setPauseOpen] = useState(false);
   const navigate = useNavigate();
-  const chartData = chartPeriod === "weekly" ? weeklyData : monthlyData;
-  const totalEarnings = weeklyData.reduce((s, d) => s + d.actual, 0);
+
+  // ── Database Data ──────────────────────────────────────────
+  const { data: profile } = useProfile();
+  const { data: activePolicy } = useActivePolicy();
+  const { data: payoutHistory, loading: payoutsLoading } = usePayouts();
+  
+  const chartData = chartPeriod === "weekly" ? (profile?.daily_earnings?.length ? profile.daily_earnings : weeklyData) : monthlyData;
+  const totalEarnings = chartData.reduce((s: any, d: any) => s + (d.actual || 0), 0);
+  const platforms = profile?.platforms || [];
 
   // ── Live ML data (auto-polls every 15 min) ─────────────────
   const { data: liveData, loading: liveLoading, error: liveError, lastUpdated, refetch } = useRunLive("Bangalore");
@@ -312,7 +324,12 @@ export function HomeTab() {
 
   return (
     <div className="p-6 space-y-5">
-      <PauseModal open={pauseOpen} onClose={() => setPauseOpen(false)} />
+      <PauseModal 
+        open={pauseOpen} 
+        onClose={() => setPauseOpen(false)} 
+        activePolicy={activePolicy}
+        refetch={refetch}
+      />
 
       <div className="grid lg:grid-cols-3 gap-5">
         {/* LEFT */}
@@ -369,20 +386,28 @@ export function HomeTab() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-syne font-bold text-[#0F172A]">Linked Platforms</h3>
-              <button className="text-xs text-[#6366F1] font-medium">+ Add platform</button>
+              <button className="text-xs text-[#6366F1] font-medium" onClick={() => navigate("/onboard")}>+ Add platform</button>
             </div>
             <div className="flex gap-3 overflow-x-auto pb-1">
-              {platformCards.map((p) => (
-                <div key={p.id} className="k-card-sm flex-shrink-0 w-44">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-2xl">{p.icon}</span>
-                    <button className="text-[#94A3B8]"><MoreHorizontal size={16} /></button>
+              {platforms.length > 0 ? platforms.map((p: any) => {
+                const details = platformCards.find(c => c.id === p) || { label: p, icon: "📦", weekEarnings: 0, lastEarning: 0, lastDay: "—" };
+                return (
+                  <div key={p} className="k-card-sm flex-shrink-0 w-44">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-2xl">{details.icon}</span>
+                      <button className="text-[#94A3B8]"><MoreHorizontal size={16} /></button>
+                    </div>
+                    <div className="text-xs text-[#64748B] mb-1">{details.label}</div>
+                    <div className="font-mono font-bold text-[#0F172A]">{formatRupee(details.weekEarnings)}</div>
+                    <div className="text-xs text-[#94A3B8] mt-0.5">Last: {formatRupee(details.lastEarning)} {details.lastDay}</div>
                   </div>
-                  <div className="text-xs text-[#64748B] mb-1">{p.label}</div>
-                  <div className="font-mono font-bold text-[#0F172A]">{formatRupee(p.weekEarnings)}</div>
-                  <div className="text-xs text-[#94A3B8] mt-0.5">Last: {formatRupee(p.lastEarning)} {p.lastDay}</div>
+                );
+              }) : (
+                <div className="w-full k-card-sm py-8 text-center text-[#94A3B8] border-dashed border-2">
+                  No platforms linked yet. <br/>
+                  <button onClick={() => navigate("/onboard")} className="text-[#6366F1] font-medium mt-1">Connect your platforms</button>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -397,7 +422,7 @@ export function HomeTab() {
           <div className="k-card">
             <h3 className="font-syne font-bold text-[#0F172A] mb-4">Recent Payouts</h3>
             <div className="space-y-3">
-              {recentPayouts.map((r, i) => (
+              {payoutHistory.length > 0 ? payoutHistory.map((r, i) => (
                 <div key={i} className="flex items-center gap-3 py-2 border-b border-[#EDE9FE] last:border-0">
                   <div className="w-10 h-10 rounded-xl bg-[#EEF2FF] flex items-center justify-center text-xl flex-shrink-0">{r.icon}</div>
                   <div className="flex-1 min-w-0">
@@ -408,7 +433,11 @@ export function HomeTab() {
                     {r.positive ? "+" : "-"}{formatRupee(r.amount)}
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="py-6 text-center text-[#94A3B8] text-sm">
+                  {payoutsLoading ? "Loading history..." : "No recent activity recorded."}
+                </div>
+              )}
             </div>
           </div>
 

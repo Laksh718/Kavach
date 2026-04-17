@@ -4,6 +4,8 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from pydantic import BaseModel
 from backend.app.services.pipeline_service import run_full_pipeline
 from backend.app.services.payout_service import get_all_payouts
@@ -15,6 +17,15 @@ app = FastAPI(
     description="API for Parametric Insurance Workflow",
     version="1.1.0"
 )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # -------------------------
 # Request Schemas
@@ -52,10 +63,11 @@ class PipelineRequest(BaseModel):
 import joblib
 from backend.app.services.external_api_service import get_live_weather_and_aqi, get_disruption_news
 from ml.utils.actuarial_logic import calculate_final_premium, check_exclusion_clauses
+from ml.utils.model_loader import load_disruption_model, load_risk_model
 
-# Load production models
-RISK_MODEL = joblib.load("ml/models/risk_model.joblib")
-DISRUPTION_MODEL = joblib.load("ml/models/disruption_model.joblib")
+# Load production models with robust path resolution
+RISK_MODEL = load_risk_model()
+DISRUPTION_MODEL = load_disruption_model()
 
 @app.get("/")
 def root():

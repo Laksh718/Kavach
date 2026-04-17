@@ -1,9 +1,11 @@
 import { lazy, Suspense } from 'react'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { useAuthStore } from '@/store/authStore'
 
 // Lazy imports for code splitting
 const Landing = lazy(() => import('@/pages/Landing'))
 const Onboarding = lazy(() => import('@/pages/Onboarding'))
+const Login = lazy(() => import('@/pages/Auth/Login'))
 const WorkerDashboard = lazy(() => import('@/pages/WorkerDashboard'))
 const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'))
 const InsurerPortal = lazy(() => import('@/pages/InsurerPortal'))
@@ -27,6 +29,15 @@ function withSuspense(Component: React.ComponentType) {
   )
 }
 
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuthStore()
+
+  if (isLoading) return <PageLoader />
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+
+  return <>{children}</>
+}
+
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -37,12 +48,24 @@ export const router = createBrowserRouter([
     element: withSuspense(Onboarding),
   },
   {
+    path: '/signup',
+    element: withSuspense(Onboarding),
+  },
+  {
     path: '/onboarding',
-    element: <Navigate to="/onboard" replace />,
+    element: <Navigate to="/signup" replace />,
+  },
+  {
+    path: '/login',
+    element: withSuspense(Login),
   },
   {
     path: '/dashboard/*',
-    element: withSuspense(WorkerDashboard),
+    element: (
+      <ProtectedRoute>
+        {withSuspense(WorkerDashboard)}
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/worker/*',
@@ -50,7 +73,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/admin/*',
-    element: withSuspense(AdminDashboard),
+    element: (
+      <ProtectedRoute>
+        {withSuspense(AdminDashboard)}
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/admin-dashboard/*',
@@ -58,7 +85,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/insurer/*',
-    element: withSuspense(InsurerPortal),
+    element: (
+      <ProtectedRoute>
+        {withSuspense(InsurerPortal)}
+      </ProtectedRoute>
+    ),
   },
   {
     path: '*',
