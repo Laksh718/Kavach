@@ -24,12 +24,18 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
 
   setSession: (session) => {
-    set({ 
-      session, 
-      user: session?.user ?? null, 
-      isAuthenticated: !!session,
-      isLoading: false 
-    })
+    // Prevent Supabase auth change events from overwriting the explicit demo session
+    set((state) => {
+      if (state.session?.access_token === "demo" && !session) {
+        return state; // Maintain the mock session
+      }
+      return {
+        session,
+        user: session?.user ?? null,
+        isAuthenticated: !!session,
+        isLoading: false,
+      };
+    });
   },
 
   setWorker: (worker) => set({ worker }),
