@@ -7,7 +7,7 @@ dist/
 # TypeScript build info
 *.tsbuildinfo
 
-# environment files
+# environment files — NEVER commit real credentials
 .env
 .env.*
 !.env.example
@@ -34,4 +34,3 @@ __pycache__/
 *$py.class
 .pytest_cache/
 .mypy_cache/
-
